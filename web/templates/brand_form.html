@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Add brand — Content Agent{% endblock %}
+{% block content %}
+<h1>Add a brand</h1>
+<p class="subtitle">This information is used as context every time content is generated for this brand.</p>
+<div class="card">
+  <form method="post" action="/brands">
+    {% include "partials/brand_fields.html" %}
+    <div class="actions">
+      <button type="submit" class="btn">Create brand</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

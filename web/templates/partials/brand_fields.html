@@ -1,0 +1,28 @@
+{# Shared brand-identity fields. `brand` is either a Brand model (editing) or undefined (creating). #}
+<div class="field">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required maxlength="80"
+         value="{{ brand.name if brand else '' }}" />
+  <span class="hint">Short identifier, shown on the brand's tab.</span>
+</div>
+<div class="field">
+  <label for="background">Background</label>
+  <textarea id="background" name="background" rows="4">{{ brand.background if brand else '' }}</textarea>
+  <span class="hint">The general story of the brand — what it is, what it does.</span>
+</div>
+<div class="field">
+  <label for="voice">Voice</label>
+  <textarea id="voice" name="voice" rows="3">{{ brand.voice if brand else '' }}</textarea>
+  <span class="hint">Tone and style of content (e.g. high-energy, informal, academic, lots of emojis).</span>
+</div>
+<div class="field">
+  <label for="audience">Audience</label>
+  <textarea id="audience" name="audience" rows="3">{{ brand.audience if brand else '' }}</textarea>
+  <span class="hint">Who this content is written for.</span>
+</div>
+<div class="field">
+  <label for="skypilot_id">SkyPilot account ID</label>
+  <input type="text" id="skypilot_id" name="skypilot_id" maxlength="80"
+         value="{{ brand.skypilot_id if brand else '' }}" />
+  <span class="hint">The SkyPilot account UUID this brand posts to.</span>
+</div>

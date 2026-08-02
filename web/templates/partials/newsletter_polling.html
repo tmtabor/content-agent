@@ -1,0 +1,16 @@
+{# Self-refreshing poll: htmx processes hx-* attributes on content it just
+   swapped in, so as long as the job is still running, each response here
+   re-renders this same partial (with the latest phase) and it re-triggers
+   itself — no custom JS/setInterval needed. Once the job finishes, the
+   status endpoint swaps in the real result or error partial instead, which
+   has no such trigger, ending the loop. #}
+<div class="card" id="newsletter-draft">
+  <div class="generating-status"
+       hx-get="/brands/{{ brand_id }}/newsletter/status/{{ job_id }}?prompt={{ original_prompt | urlencode }}"
+       hx-trigger="load delay:1s"
+       hx-target="#newsletter-result"
+       hx-swap="innerHTML">
+    <span class="spinner-active"></span>
+    <span>{{ phase }}&hellip;</span>
+  </div>
+</div>

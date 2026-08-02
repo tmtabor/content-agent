@@ -10,3 +10,11 @@ dist/
 .DS_Store
 logfire_credentials.json
 .claude/settings.local.json
+.idea/
+
+# App state — a single sqlite file holds all brand config + content history,
+# it must never be checked in.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

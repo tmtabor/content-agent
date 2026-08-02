@@ -1,0 +1,43 @@
+<div class="card" id="newsletter-draft">
+  <form id="newsletter-draft-form">
+    {# "prompt" carries the original request so Regenerate reruns from it,
+       discarding any edits below — it never touches history. #}
+    <input type="hidden" name="prompt" value="{{ original_prompt }}" />
+
+    <h2>Preview</h2>
+    <iframe class="newsletter-preview" srcdoc="{{ body_html }}" sandbox=""></iframe>
+
+    <div class="field">
+      <label for="body_html">Body HTML</label>
+      <textarea id="body_html" name="body_html" rows="14">{{ body_html }}</textarea>
+    </div>
+
+    <h2>Subject / description pairs (for A/B testing)</h2>
+    {% for pair in subject_pairs %}
+    <div class="subject-pair">
+      <div class="subject">{{ pair.subject }}</div>
+      <div class="description">{{ pair.description }}</div>
+    </div>
+    <input type="hidden" name="subject_{{ loop.index0 }}" value="{{ pair.subject }}" />
+    <input type="hidden" name="description_{{ loop.index0 }}" value="{{ pair.description }}" />
+    {% endfor %}
+    <input type="hidden" name="subject_count" value="{{ subject_pairs|length }}" />
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/newsletter/generate"
+              hx-include="closest form" hx-target="#newsletter-result" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              onclick="navigator.clipboard.writeText(document.getElementById('body_html').value)">
+        Copy to Clipboard
+      </button>
+      <button type="button" class="btn"
+              hx-post="/brands/{{ brand_id }}/newsletter/mark-used"
+              hx-include="closest form" hx-target="#newsletter-result" hx-swap="innerHTML">
+        <span class="btn-text">Mark as Used</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

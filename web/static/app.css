@@ -1,0 +1,440 @@
+/* Design tokens — dark sidebar / light content, Catppuccin-esque palette.
+   Carried over from the agent-web-ui house style; swap these values for a
+   real brand palette later, keep the shape. */
+:root {
+  --sidebar-bg: #1e1e2e;
+  --sidebar-fg: #cdd6f4;
+  --sidebar-fg-dim: #9399b2;
+  --content-bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --border: #e2e2e6;
+  --accent: #7c6cf0;
+  --accent-fg: #ffffff;
+  --danger: #d64545;
+  --danger-fg: #ffffff;
+  --text: #1e1e2e;
+  --text-dim: #6c6f85;
+  --error-bg: #fde2e2;
+  --error-fg: #8a1f1f;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --tabs-bg: #14141c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --content-bg: #16161e;
+    --card-bg: #1e1e2e;
+    --border: #313244;
+    --text: #cdd6f4;
+    --text-dim: #9399b2;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--content-bg);
+}
+
+/* --- Brand tab bar (top) --- */
+
+.brand-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--tabs-bg);
+  padding: 0 12px;
+  overflow-x: auto;
+}
+
+.brand-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--sidebar-fg-dim);
+}
+
+.brand-tab.active {
+  border-bottom-color: var(--accent);
+  color: var(--sidebar-fg);
+}
+
+.brand-tab-name {
+  padding: 12px 6px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.brand-tab-gear {
+  padding: 6px;
+  color: var(--sidebar-fg-dim);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+}
+
+.brand-tab-gear:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-fg);
+}
+
+.brand-tab-add {
+  padding: 12px 16px;
+  color: var(--sidebar-fg-dim);
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.brand-tab-add:hover {
+  color: var(--sidebar-fg);
+}
+
+/* --- Shell: sidebar + content, reused from the house pattern --- */
+
+.shell {
+  display: flex;
+  height: calc(100vh - 45px);
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sidebar-fg-dim);
+  margin-bottom: 12px;
+}
+
+.sidebar-nav a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  color: var(--sidebar-fg-dim);
+  text-decoration: none;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+}
+
+.sidebar-nav a.active,
+.sidebar-nav a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-fg);
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.main-narrow {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 28px 0 12px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+}
+
+/* --- Cards / forms --- */
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.field .hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.field input[type="text"],
+.field input[type="datetime-local"],
+.field input[type="number"],
+.field textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--content-bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.inline-fields {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.inline-fields .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btn {
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  opacity: 0.92;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--danger-fg);
+}
+
+.char-counter {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.char-counter.over {
+  color: var(--error-fg);
+  font-weight: 600;
+}
+
+.post-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--content-bg);
+}
+
+.post-item label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.post-item textarea {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  padding: 9px 11px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+
+.code-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  white-space: pre;
+}
+
+.error-banner {
+  background: var(--error-bg);
+  color: var(--error-fg);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.notice-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.subject-pair {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.subject-pair:last-child {
+  border-bottom: none;
+}
+
+.subject-pair .subject {
+  font-weight: 600;
+}
+
+.subject-pair .description {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+.newsletter-preview {
+  width: 100%;
+  min-height: 400px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-meta {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+.history-preview {
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+.empty-state {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  padding: 8px 0;
+}
+
+.generating-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+/* Always animating, unlike .spinner below — this shows during the 1s gap
+   between polls too, not just while a poll request is actually in flight. */
+.spinner-active {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* htmx loading state — apply .spinner + .btn-text to any hx-post button */
+.spinner {
+  display: none;
+}
+
+.htmx-request .spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  /* currentColor, not a hardcoded white — a white spinner is invisible on
+     .btn-secondary's transparent background. This tracks whatever color
+     the button's own text uses, so it stays visible on every button variant. */
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.85;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.htmx-request .btn-text {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

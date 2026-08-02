@@ -7,8 +7,13 @@ requires-python = ">=3.13"
 dependencies = [
     "pydantic-ai>=2.1.0",
     "pydantic-settings>=2.0",
-    "logfire>=3.0",
+    "logfire[fastapi]>=3.0",
     "python-dotenv>=1.0",
+    "fastapi>=0.115",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
@@ -41,8 +46,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agent"]
-# choose_pattern.py writes a combined aliased import ("X as A, Y as B") into
-# agent/agents/__init__.py — without this, isort flags it (I001) after any
-# pattern switch and CI goes red.
+known-first-party = ["agent", "db", "integrations", "web"]
+# agent/agents/__init__.py re-exports a combined aliased import
+# ("X as A, Y as B") — without this, isort flags it (I001).
 combine-as-imports = true

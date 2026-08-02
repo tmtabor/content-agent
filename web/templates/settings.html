@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ brand.name }}{% endblock %}
+{% block content %}
+<h1>{{ brand.name }} settings</h1>
+
+<h2>Brand</h2>
+<div class="card">
+  <form method="post" action="/brands/{{ brand.id }}">
+    {% include "partials/brand_fields.html" %}
+    <div class="actions">
+      <button type="submit" class="btn">Save brand</button>
+    </div>
+  </form>
+</div>
+
+<h2>Bluesky</h2>
+<div class="card">
+  <form method="post" action="/brands/{{ brand.id }}/bluesky-settings">
+    <div class="field">
+      <label for="bluesky_hashtags">Hashtags</label>
+      <textarea id="bluesky_hashtags" name="hashtags" rows="2">{{ bluesky_settings.hashtags }}</textarea>
+      <span class="hint">General hashtags for Bluesky posts (e.g. #ttrpgsky).</span>
+    </div>
+    <div class="field">
+      <label for="bluesky_instructions">Instructions</label>
+      <textarea id="bluesky_instructions" name="instructions" rows="4">{{ bluesky_settings.instructions }}</textarea>
+      <span class="hint">Formatting/style preferences reused on every post (e.g. "avoid emojis except as bullet points").</span>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Save Bluesky settings</button>
+    </div>
+  </form>
+</div>
+
+<h3>Bluesky history</h3>
+<div class="card">
+  {% if bluesky_history %}
+    <form method="post" action="/brands/{{ brand.id }}/history/bluesky/purge"
+          onsubmit="return confirm('Purge all saved Bluesky history for {{ brand.name }}?');">
+      <button type="submit" class="btn btn-secondary">Purge all Bluesky history</button>
+    </form>
+    {% for entry in bluesky_history %}
+    <div class="history-item">
+      <div>
+        <div class="history-meta">{{ entry.created_at }}{% if entry.skypilot_post_id %} · sent to SkyPilot{% endif %}</div>
+        <div class="history-preview">{% for post in entry.payload.posts %}{{ post.text }}{% if not loop.last %}
+---
+{% endif %}{% endfor %}</div>
+      </div>
+      <form method="post" action="/brands/{{ brand.id }}/history/bluesky/{{ entry.id }}/delete">
+        <button type="submit" class="btn btn-secondary">Delete</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No Bluesky content saved yet.</div>
+  {% endif %}
+</div>
+
+<h2>Newsletter</h2>
+<div class="card">
+  <form method="post" action="/brands/{{ brand.id }}/newsletter-settings">
+    <div class="field">
+      <label for="newsletter_instructions">Instructions</label>
+      <textarea id="newsletter_instructions" name="instructions" rows="6">{{ newsletter_settings.instructions }}</textarea>
+      <span class="hint">Recurring subsections, target word counts, subject-line emoji, etc.</span>
+    </div>
+    <div class="field">
+      <label for="newsletter_html_template">HTML template</label>
+      <textarea id="newsletter_html_template" name="html_template" rows="10"
+                class="code-textarea">{{ newsletter_settings.html_template }}</textarea>
+      <span class="hint">Optional. When set, every generated newsletter follows this exact HTML structure instead of the model inventing its own layout.</span>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Save newsletter settings</button>
+    </div>
+  </form>
+</div>
+
+<h3>Newsletter history</h3>
+<div class="card">
+  {% if newsletter_history %}
+    <form method="post" action="/brands/{{ brand.id }}/history/newsletter/purge"
+          onsubmit="return confirm('Purge all saved newsletter history for {{ brand.name }}?');">
+      <button type="submit" class="btn btn-secondary">Purge all newsletter history</button>
+    </form>
+    {% for entry in newsletter_history %}
+    <div class="history-item">
+      <div>
+        <div class="history-meta">{{ entry.created_at }}</div>
+        <div class="history-preview">{{ entry.payload.subject_pairs[0].subject if entry.payload.subject_pairs else "" }}</div>
+      </div>
+      <form method="post" action="/brands/{{ brand.id }}/history/newsletter/{{ entry.id }}/delete">
+        <button type="submit" class="btn btn-secondary">Delete</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No newsletters saved yet.</div>
+  {% endif %}
+</div>
+
+<h2>Danger zone</h2>
+<div class="card">
+  <form method="post" action="/brands/{{ brand.id }}/delete"
+        onsubmit="return confirm('Delete {{ brand.name }} and all of its content history? This cannot be undone.');">
+    <button type="submit" class="btn btn-danger">Delete Brand</button>
+  </form>
+</div>
+{% endblock %}

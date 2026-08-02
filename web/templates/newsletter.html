@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Newsletter — {{ brand.name }}{% endblock %}
+{% block content %}
+<h1>Newsletter</h1>
+<p class="subtitle">Generate a newsletter for {{ brand.name }}. Review and edit before use.</p>
+
+<div class="card">
+  <form hx-post="/brands/{{ brand.id }}/newsletter/generate" hx-target="#newsletter-result" hx-swap="innerHTML">
+    <div class="field">
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt" name="prompt" rows="3" required placeholder="What should this newsletter cover?"></textarea>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">
+        <span class="btn-text">Generate</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<div id="newsletter-result"></div>
+{% endblock %}

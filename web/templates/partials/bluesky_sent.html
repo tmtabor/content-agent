@@ -1,0 +1,9 @@
+<div class="notice-banner">
+  {% if marked_used %}
+    Marked as used and added to this brand's Bluesky history.
+  {% elif scheduled %}
+    Sent to SkyPilot, scheduled for {{ entry.scheduled_for }}.
+  {% else %}
+    Sent to SkyPilot as a draft.
+  {% endif %}
+</div>

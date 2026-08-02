@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Content Agent{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+</head>
+<body>
+  <div class="brand-tabs">
+    {% for brand in brands %}
+    <div class="brand-tab {% if brand.id == active_brand_id %}active{% endif %}">
+      <a class="brand-tab-name" href="/brands/{{ brand.id }}/bluesky">{{ brand.name }}</a>
+      <a class="brand-tab-gear" href="/brands/{{ brand.id }}/settings" title="{{ brand.name }} settings">&#9881;</a>
+    </div>
+    {% endfor %}
+    <a class="brand-tab-add" href="/brands/new" title="Add brand">+</a>
+  </div>
+  <div class="shell">
+    {% if active_brand_id %}
+    <aside class="sidebar">
+      <div class="sidebar-title">Content Agents</div>
+      <nav class="sidebar-nav">
+        {% for content_agent in content_agents %}
+        <a href="/brands/{{ active_brand_id }}/{{ content_agent.key }}"
+           class="{% if active_agent == content_agent.key %}active{% endif %}">
+          {{ content_agent.label }}
+        </a>
+        {% endfor %}
+      </nav>
+    </aside>
+    {% endif %}
+    <main class="main">
+      <div class="main-narrow">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>

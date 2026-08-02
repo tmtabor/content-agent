@@ -1,0 +1,46 @@
+<div class="card" id="bluesky-draft">
+  <form id="bluesky-draft-form">
+    {# Hidden fields carry the *original* generation inputs so "Regenerate"
+       re-runs from the same prompt/thread settings, discarding any edits
+       made to the post text below — regenerating never touches history. #}
+    <input type="hidden" name="prompt" value="{{ original_prompt }}" />
+    <input type="hidden" name="want_thread" value="{{ 'true' if want_thread else 'false' }}" />
+    {% if post_count is not none %}
+    <input type="hidden" name="post_count" value="{{ post_count }}" />
+    {% endif %}
+    <input type="hidden" name="post_count_actual" value="{{ posts|length }}" />
+
+    {% for post_text in posts %}
+    <div class="post-item">
+      <label for="post_{{ loop.index0 }}">Post {{ loop.index }}{% if posts|length > 1 %} of {{ posts|length }}{% endif %}</label>
+      <textarea id="post_{{ loop.index0 }}" name="post_{{ loop.index0 }}" rows="3"
+                oninput="var c=this.nextElementSibling; c.textContent=this.value.length+' / 300'; c.classList.toggle('over', this.value.length>300);">{{ post_text }}</textarea>
+      <div class="char-counter {% if post_text|length > 300 %}over{% endif %}">{{ post_text|length }} / 300</div>
+    </div>
+    {% endfor %}
+
+    <div class="field" style="max-width:260px;">
+      <label for="scheduled_for">Schedule for (optional)</label>
+      <input type="datetime-local" id="scheduled_for" name="scheduled_for" />
+      <span class="hint">Leave blank to save as a SkyPilot draft.</span>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/bluesky/generate"
+              hx-include="closest form" hx-target="#bluesky-result" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn"
+              hx-post="/brands/{{ brand_id }}/bluesky/send"
+              hx-include="closest form" hx-target="#bluesky-result" hx-swap="innerHTML">
+        <span class="btn-text">Send to SkyPilot</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/bluesky/mark-used"
+              hx-include="closest form" hx-target="#bluesky-result" hx-swap="innerHTML">
+        <span class="btn-text">Mark as Used</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

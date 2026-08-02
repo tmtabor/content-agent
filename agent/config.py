@@ -38,8 +38,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Model selection — model-agnostic, defaults to Claude Sonnet 5
-    model: str = "anthropic:claude-sonnet-5"
+    # Model selection — model-agnostic, defaults to local Ollama (gemma4)
+    model: str = "ollama:gemma4"
 
     # Judge model for LLM-as-judge evals. Use a different model from the agent
     # to avoid self-assessment bias, but at least as capable — a weak judge
@@ -53,6 +53,9 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "INFO"
+
+    # SQLite file holding all brand config + content history for this app.
+    db_path: str = "content_agent.db"
 
     @model_validator(mode="after")
     def check_provider_key(self) -> "Settings":
