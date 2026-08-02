@@ -3,18 +3,22 @@
 Run with: uv run uvicorn web.main:app --reload --port 8000
 """
 
+import asyncio
+import os
+import signal
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import logfire
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from agent.logging import configure_logging
 from db import init_db
 from db.repository import list_brands
+from web.jobs import run_in_background
 from web.routers import bluesky, brands, newsletter, settings
 
 configure_logging()
@@ -50,3 +54,17 @@ async def index() -> RedirectResponse:
     if not existing:
         return RedirectResponse("/brands/new")
     return RedirectResponse(f"/brands/{existing[0].id}/bluesky")
+
+
+@app.post("/shutdown", response_class=HTMLResponse)
+async def shutdown() -> HTMLResponse:
+    """Stop the server from the UI — an alternative to Ctrl+C in the
+    macOS launcher's terminal window (see scripts/build_launcher.sh).
+    """
+
+    async def _stop() -> None:
+        await asyncio.sleep(0.3)  # let this response finish sending first
+        os.kill(os.getpid(), signal.SIGINT)  # same signal Ctrl+C sends; uvicorn shuts down cleanly
+
+    run_in_background(_stop())
+    return HTMLResponse("<p>Shutting down — you can close this tab and the terminal window.</p>")

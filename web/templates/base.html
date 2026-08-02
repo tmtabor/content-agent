@@ -29,6 +29,14 @@
         </a>
         {% endfor %}
       </nav>
+      <form
+        method="post"
+        action="/shutdown"
+        class="sidebar-shutdown"
+        onsubmit="return confirm('Shut down the server?');"
+      >
+        <button type="submit" class="sidebar-danger-link">Shut down server</button>
+      </form>
     </aside>
     {% endif %}
     <main class="main">

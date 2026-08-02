@@ -110,6 +110,8 @@ body {
 .sidebar {
   width: 200px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--sidebar-bg);
   color: var(--sidebar-fg);
   padding: 20px 16px;
@@ -139,6 +141,33 @@ body {
 .sidebar-nav a:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--sidebar-fg);
+}
+
+/* .sidebar is a flex column; margin-top: auto pushes this to the end
+   regardless of how much nav content is above it. */
+.sidebar-shutdown {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-danger-link {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: #f38ba8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-danger-link:hover {
+  background: rgba(243, 139, 168, 0.12);
 }
 
 .main {

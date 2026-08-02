@@ -1,132 +1,130 @@
-# Agent Template
+# Content Agent
 
-Opinionated general-purpose AI agent template. Clone and start building.
+A local web app that generates on-brand content — Bluesky posts/threads and
+email newsletters — for one or more brands. Each brand gets its own
+background, voice, and audience context; each content type has its own
+generation agent, its own configurable instructions, and its own history so
+it doesn't repeat itself. Runs against a local Ollama model by default, no
+API key required.
 
-## Stack
-- Python 3.13, uv
-- Pydantic AI v2 (agents, tools) + pydantic-evals (evals)
-- Logfire (observability)
-- pytest + pytest-asyncio
+## What it does
+
+- **Multiple brands**, each with its own tab: name, background, voice,
+  audience, and SkyPilot account ID.
+- **Bluesky agent**: generates a single post or a thread (each post capped
+  at 300 characters), using per-brand hashtags and formatting instructions.
+  Review and edit before you **Regenerate**, **Send to SkyPilot**
+  (immediately or scheduled), or **Mark as Used**.
+- **Newsletter agent**: generates an HTML body plus 5 subject/description
+  pairs for A/B testing, optionally following a brand-specific HTML
+  template. Review and edit before you **Regenerate**, **Copy to
+  Clipboard**, or **Mark as Used**.
+- **Anti-repetition**: the last 20 pieces of content per brand, per content
+  type are kept and fed back into generation so new posts/newsletters don't
+  reuse the same jokes or angles.
+- **Everything in one SQLite file** — brand config, per-agent settings, and
+  content history. Never committed (see `.gitignore`).
 
 ## Quickstart
 
+Prerequisites: Python 3.13, [uv](https://docs.astral.sh/uv/), and a local
+[Ollama](https://ollama.com) install with the default model pulled:
+
 ```bash
-# Install dependencies
+ollama pull gemma4
+```
+
+Then:
+
+```bash
 uv sync --group dev
 
-# After uv sync, install Claude Code skills for pydantic-ai and logfire
-uvx library-skills install --all --claude
-
-# Copy and configure environment
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env: OLLAMA_BASE_URL is already set for a local Ollama install.
+# Add SKYPILOT_API_KEY if you want "Send to SkyPilot" to work
+# (https://skypilot.social/static/html/api.html).
 
-# Pick an agent pattern (single / supervisor / tool_calling) — deletes the
-# other stubs and rewires imports; see "Agent patterns" below
-uv run python scripts/choose_pattern.py single
-
-# Run unit tests (no API calls, no API key needed)
-uv run pytest
-
-# Run evals — requires a real API key, see Evals below
-uv run pytest -m eval
-
-# Lint
-uv run ruff check .
-
-# Format
-uv run ruff format .
+uv run uvicorn web.main:app --reload --port 8000
 ```
+
+Open <http://localhost:8000> — with no brands yet, it lands on the "add a
+brand" form. The app's SQLite file (`content_agent.db` by default) is
+created automatically on first run.
+
+## Using it
+
+- **Add a brand**: click the **+** tab, fill in name/background/voice/
+  audience/SkyPilot ID.
+- **Generate content**: pick a content agent in the left column (Bluesky or
+  Newsletter), write a prompt, hit Generate. Newsletter generation runs in
+  two stages (body, then subject lines) and shows progress for each.
+- **Review**: the draft is fully editable before you act on it.
+  Regenerating discards edits and reruns from the original prompt without
+  touching history; the other actions save the (possibly edited) content.
+- **Brand settings**: click the gear icon on a brand's tab to edit its core
+  fields, configure Bluesky hashtags/instructions and newsletter
+  instructions/HTML template, browse or purge past content, or delete the
+  brand entirely.
+
+## Configuration
+
+All settings are read from `.env` (copy `.env.example` to start). Agent
+settings use an `AGENT_` prefix; provider/integration keys keep their
+standard names.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `AGENT_MODEL` | `ollama:gemma4` | Any [pydantic-ai](https://ai.pydantic.dev) model string. Switching to a hosted provider (`anthropic:...`, `openai:...`, `google:...`) needs that provider's API key set too. |
+| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Required for the default local model — must include the `/v1` suffix. |
+| `AGENT_DB_PATH` | `content_agent.db` | The single SQLite file holding all brand config and content history. |
+| `SKYPILOT_API_KEY` | — | Required only for "Send to SkyPilot". |
+| `AGENT_LOG_LEVEL` | `INFO` | Standard Python logging level. |
+| `LOGFIRE_TOKEN` | unset | If set, traces go to Logfire cloud; otherwise they print to the console. |
+| `AGENT_JUDGE_MODEL` | `anthropic:claude-opus-4-8` | Used only by evals that don't ship yet — reserved for future LLM-as-judge content-quality checks. |
+
+## Development
+
+```bash
+uv run pytest              # unit tests — TestModel, no real model calls, no API key
+uv run pytest -m eval      # reliability evals against the real model, see below
+uv run ruff check .        # lint
+uv run ruff format .       # format
+```
+
+**Reliability evals** (`evals/test_reliability.py`): each agent generates 5
+times against the real configured model and every attempt must succeed and
+respect its hard constraints (300-char cap, exactly 5 distinct newsletter
+subject lines). This exists because a small local model occasionally
+produces output a much larger hosted model wouldn't — these evals catch a
+reliability regression (from a model swap, prompt edit, or schema change)
+before a user hits it. No API key needed against the default local model,
+but it does need a real, running Ollama with the model pulled, and takes a
+few minutes to run.
+
+See `CLAUDE.md` for architecture notes, including how to add a third
+content agent.
 
 ## Project structure
 
 ```
-agent/
-├── config.py         # Settings — validates the AGENT_MODEL provider at import time (raises if misconfigured)
-├── logging.py         # Logfire setup — configure_logging(), get_logger()
-├── agents/            # Three interchangeable stubs — pick one with scripts/choose_pattern.py
-│   ├── __init__.py     #   canonical names (run_agent, AgentOutput, …) re-exported from the chosen stub
-│   ├── single.py       #   one agent, one task (the default)
-│   ├── supervisor.py    #   supervisor delegates to specialized workers
-│   └── tool_calling.py  #   agent with tools that call external systems
-├── tools/example.py   # Canonical tool pattern — copy and adapt
-└── prompts/
-    ├── system.txt       # Default system prompt — edit this first
-    └── templates.py      # load_prompt() loader
+db/                    SQLite layer — brands, per-agent settings, content history
+  schema.sql / connection.py / models.py / repository.py
 
-scripts/choose_pattern.py   # Pick an agent pattern — deletes the other stubs, rewires imports
-tests/    # Unit tests against TestModel — no API calls, no API key needed
-evals/    # Pass/fail + dataset + LLM-as-judge evals — real API calls, run with -m eval
-.github/workflows/ci.yml    # CI: ruff check, format check, unit tests (no secrets needed)
+agent/agents/
+  bluesky.py            Bluesky post/thread generation
+  newsletter.py          Newsletter generation (body, then subject lines)
+
+integrations/
+  skypilot.py            SkyPilot API client (posting/scheduling)
+
+web/                    FastAPI + Jinja2 + HTMX UI
+  main.py, routers/, templates/, static/, jobs.py (background-job polling)
+
+tests/                  Unit tests (TestModel, no real model calls)
+evals/                  Reliability evals against the real model (-m eval)
 ```
-
-## Configuration
-
-All settings are read from the environment (see `.env.example`). Agent-specific
-variables carry an `AGENT_` prefix so a generic name like `MODEL` in your shell
-can't silently change the provider; API keys and `LOGFIRE_TOKEN` keep their
-standard names because the provider SDKs read those exact variables directly.
-
-| Variable | Default | Notes |
-|---|---|---|
-| Provider key (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `OLLAMA_BASE_URL`, …) | — | Whichever variable the provider behind `AGENT_MODEL` reads. Not declared on `Settings` — `Settings` validates it by asking pydantic-ai to build that provider at import time, so any provider pydantic-ai supports (including ones added in later pydantic-ai releases) is checked automatically, and it raises immediately if misconfigured — not a lazy/runtime check. |
-| `AGENT_MODEL` | `anthropic:claude-sonnet-5` | The agent under test. Any pydantic-ai model string works, e.g. `google:gemini-2.0-flash` or `ollama:*` for local models (no API key needed, but `OLLAMA_BASE_URL` must be set). |
-| `AGENT_JUDGE_MODEL` | `anthropic:claude-opus-4-8` | Used only by the LLM-as-judge evals. Kept separate from `AGENT_MODEL` to avoid self-assessment bias — keep it at least as capable as the agent model, not cheaper. |
-| `LOGFIRE_TOKEN` | unset | If set, traces go to Logfire cloud. If unset, traces print to the console — no separate dev-mode flag needed. |
-| `AGENT_LOG_LEVEL` | `INFO` | Standard Python logging level. |
-
-## Agent patterns
-
-Three stubs are provided — pick one:
-
-- `agent/agents/single.py` — one agent, one task
-- `agent/agents/supervisor.py` — supervisor delegates to specialized workers
-- `agent/agents/tool_calling.py` — agent with tools that call external systems
-
-```bash
-uv run python scripts/choose_pattern.py tool_calling   # or single / supervisor
-```
-
-The script deletes the other two stubs and rewires the canonical import in
-`agent/agents/__init__.py`. `tests/` and `evals/` import `run_agent`,
-`AgentOutput`, `AgentDeps`, and `agent` from that package — never from a stub
-module directly — so they keep passing with zero manual edits no matter which
-pattern you choose. Run it once, right after cloning.
-
-## Usage limits
-
-Each stub defines a `USAGE_LIMITS` constant passed to every run — a guardrail
-against runaway agentic loops. `request_limit` caps model round-trips (each
-tool-call iteration is one request); `total_tokens_limit` caps overall spend.
-Exceeding either raises `UsageLimitExceeded` instead of silently burning
-tokens. Tune the values in your chosen stub to fit your task; the supervisor
-shares its budget with its workers so the limit bounds the whole delegation
-tree.
-
-## Adding tools
-
-Copy `agent/tools/example.py`, implement your tool, register with `@agent.tool`. Use `ModelRetry` only for errors the LLM can fix by changing its input (bad query, out-of-range param) — log and re-raise everything else.
-
-## Customizing the prompt
-
-Edit `agent/prompts/system.txt`. It's loaded via `load_prompt("system")` in `agent/prompts/templates.py`; add more `.txt` files in the same directory and load them the same way.
-
-## Observability
-
-All agent runs, tool calls, and model requests are automatically traced via
-`logfire.instrument_pydantic_ai()` — no per-agent setup needed. Cloud vs.
-console output is controlled by `LOGFIRE_TOKEN`, see Configuration above.
-
-## Evals
-
-- Pass/fail evals: `evals/test_pass_fail.py` — includes a `pydantic_evals`
-  Dataset eval driven by `evals/fixtures/example.json`. Add cases to that JSON
-  file to grow the eval; no code changes needed unless a case requires a new
-  kind of check (then add an `Evaluator` alongside `ContainsExpected`).
-- LLM-as-judge evals: `evals/test_llm_judge.py` — graded by `JUDGE_MODEL`, see Configuration above
-
-Both files share the same `@pytest.mark.eval` marker — there's no separate marker for the LLM-judge subset. `uv run pytest -m eval` runs all of them and requires a real API key; the LLM-judge evals also cost money (they make an extra model call per test to grade the output).
 
 ## License
 
-BSD 3-Clause — see [LICENSE](LICENSE).
+BSD 3-Clause — see [LICENSE](LICENSE). Built from
+[agent-template](https://github.com/tmtabor/agent-template).

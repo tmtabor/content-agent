@@ -380,3 +380,20 @@ def test_purge_all_history_via_settings(client):
     response = client.post(f"/brands/{brand.id}/history/bluesky/purge", follow_redirects=False)
     assert response.status_code == 303
     assert list_content_history(brand.id, "bluesky") == []
+
+
+# --- Shutdown (used by the macOS launcher's in-UI stop link) ---
+
+
+def test_shutdown_returns_confirmation_without_killing_the_test_process(client, monkeypatch):
+    """The route sends SIGINT to itself after a delay (see web/main.py) —
+    mock os.kill so that if the background task actually runs during this
+    (or a later) test, it can't take down the test process.
+    """
+    killed = []
+    monkeypatch.setattr("web.main.os.kill", lambda pid, sig: killed.append((pid, sig)))
+
+    response = client.post("/shutdown")
+
+    assert response.status_code == 200
+    assert "Shutting down" in response.text
