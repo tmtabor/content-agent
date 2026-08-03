@@ -22,13 +22,22 @@ CREATE TABLE IF NOT EXISTS newsletter_settings (
     html_template TEXT NOT NULL DEFAULT ''
 );
 
--- payload shape depends on content_type: BlueskyContent or NewsletterContent
--- (see db/models.py), stored as JSON so future content types need no
--- migration here.
+CREATE TABLE IF NOT EXISTS linkedin_settings (
+    brand_id TEXT PRIMARY KEY REFERENCES brands (id) ON DELETE CASCADE,
+    instructions TEXT NOT NULL DEFAULT ''
+);
+
+-- payload shape depends on content_type: BlueskyContent, NewsletterContent, or
+-- LinkedInContent (see db/models.py), stored as JSON so a payload shape change
+-- needs no migration here. The CHECK's value list, however, is baked into the
+-- table at creation time — adding a new content_type DOES need a migration
+-- for any db that already has this table (see db/connection.py's
+-- _recreate_content_history_with_check, since SQLite has no ALTER ... DROP
+-- CONSTRAINT). Keep this list and that function's copy in sync.
 CREATE TABLE IF NOT EXISTS content_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     brand_id TEXT NOT NULL REFERENCES brands (id) ON DELETE CASCADE,
-    content_type TEXT NOT NULL CHECK (content_type IN ('bluesky', 'newsletter')),
+    content_type TEXT NOT NULL CHECK (content_type IN ('bluesky', 'newsletter', 'linkedin')),
     payload TEXT NOT NULL,
     skypilot_post_id TEXT,
     scheduled_for TEXT,

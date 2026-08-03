@@ -100,6 +100,43 @@
   {% endif %}
 </div>
 
+<h2>LinkedIn</h2>
+<div class="card">
+  <form method="post" action="/brands/{{ brand.id }}/linkedin-settings">
+    <div class="field">
+      <label for="linkedin_instructions">Instructions</label>
+      <textarea id="linkedin_instructions" name="instructions" rows="4">{{ linkedin_settings.instructions }}</textarea>
+      <span class="hint">Preferences reused at every step of the post wizard (e.g. "always end with a question", "never mention competitors by name").</span>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Save LinkedIn settings</button>
+    </div>
+  </form>
+</div>
+
+<h3>LinkedIn history</h3>
+<div class="card">
+  {% if linkedin_history %}
+    <form method="post" action="/brands/{{ brand.id }}/history/linkedin/purge"
+          onsubmit="return confirm('Purge all saved LinkedIn history for {{ brand.name }}?');">
+      <button type="submit" class="btn btn-secondary">Purge all LinkedIn history</button>
+    </form>
+    {% for entry in linkedin_history %}
+    <div class="history-item">
+      <div>
+        <div class="history-meta">{{ entry.created_at }}</div>
+        <div class="history-preview">{{ entry.payload.post_text }}</div>
+      </div>
+      <form method="post" action="/brands/{{ brand.id }}/history/linkedin/{{ entry.id }}/delete">
+        <button type="submit" class="btn btn-secondary">Delete</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No LinkedIn posts saved yet.</div>
+  {% endif %}
+</div>
+
 <h2>Danger zone</h2>
 <div class="card">
   <form method="post" action="/brands/{{ brand.id }}/delete"

@@ -21,6 +21,7 @@ JobStatus = Literal["running", "done", "error"]
 class Job:
     status: JobStatus = "running"
     phase: str = ""
+    step: str = ""
     result: Any = None
     error: str | None = None
 

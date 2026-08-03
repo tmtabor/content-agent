@@ -1,0 +1,47 @@
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-hashtags">
+  <h2>Choose hashtags</h2>
+  <p class="subtitle">Check the ones you want to use, or add your own.</p>
+  <form id="linkedin-hashtags-form">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+
+    {% for tag in state.hashtag_options %}
+    <div class="post-item">
+      <label>
+        <input type="checkbox" name="hashtag_{{ loop.index0 }}" value="{{ tag.hashtag }}"
+               {% if tag.hashtag in state.accepted_hashtags %}checked{% endif %} />
+        {{ tag.hashtag }}
+      </label>
+      <div class="hint">{{ tag.description }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="field">
+      <label for="custom_hashtags">Add your own hashtags</label>
+      <input type="text" id="custom_hashtags" name="custom_hashtags" placeholder="#yourtag #anothertag" />
+    </div>
+
+    <div class="field">
+      <label for="regen_instructions">Additional instructions for regenerating (optional)</label>
+      <input type="text" id="regen_instructions" name="regen_instructions" />
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/back"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Back</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/hashtags/regenerate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-next"
+              hx-post="/brands/{{ brand_id }}/linkedin/outline/generate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Next</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

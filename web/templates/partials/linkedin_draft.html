@@ -1,0 +1,34 @@
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-draft">
+  <h2>Draft</h2>
+  <form id="linkedin-draft-form">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+    <div class="field">
+      <label for="draft_text">Post text</label>
+      <textarea id="draft_text" name="draft_text" rows="14">{{ state.draft_text }}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="feedback">Feedback (optional)</label>
+      <textarea id="feedback" name="feedback" rows="2" placeholder="What should change?"></textarea>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/back"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Back</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/draft/regenerate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-next"
+              hx-post="/brands/{{ brand_id }}/linkedin/polish/generate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Next</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

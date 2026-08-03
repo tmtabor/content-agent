@@ -11,17 +11,19 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import logfire
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from agent.logging import configure_logging
+from agent.config import settings as app_settings
+from agent.logging import configure_logging, get_logger
 from db import init_db
 from db.repository import list_brands
 from web.jobs import run_in_background
-from web.routers import bluesky, brands, newsletter, settings
+from web.routers import bluesky, brands, linkedin, newsletter, settings
 
 configure_logging()
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -41,10 +43,37 @@ app = FastAPI(title="Content Agent", lifespan=lifespan)
 # connected trace in Logfire (or the console, if no token is set).
 logfire.instrument_fastapi(app)
 
+
+@app.middleware("http")
+async def log_request_body_in_debug_mode(request: Request, call_next):
+    """Only acts when AGENT_DEBUG=true (see agent/config.py, agent/logging.py)
+    — logs the raw form body of every POST/PUT request, the "what did the
+    user actually submit" half of debug mode (the other half, what the
+    model produced, is logged in each agent/agents/*.py run_* wrapper).
+    Registered unconditionally rather than only when debug is on, to avoid
+    conditionally wiring the middleware stack for a setting that can't
+    change after startup anyway. Starlette caches the body after this
+    read, so route handlers' own Form(...)/request.form() parsing
+    downstream is unaffected.
+    """
+    if app_settings.debug and request.method in ("POST", "PUT"):
+        body = await request.body()
+        logger.debug(
+            "Request body",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "body": body.decode(errors="replace"),
+            },
+        )
+    return await call_next(request)
+
+
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(brands.router)
 app.include_router(bluesky.router)
 app.include_router(newsletter.router)
+app.include_router(linkedin.router)
 app.include_router(settings.router)
 
 

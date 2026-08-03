@@ -33,8 +33,19 @@ from __future__ import annotations
 
 import pytest
 
-from agent.agents import BlueskyDeps, NewsletterDeps, run_bluesky_agent, run_newsletter_agent
-from db.models import BlueskySettings, Brand, NewsletterSettings
+from agent.agents import (
+    BlueskyDeps,
+    LinkedInDeps,
+    NewsletterDeps,
+    run_bluesky_agent,
+    run_linkedin_draft_agent,
+    run_linkedin_hashtags_agent,
+    run_linkedin_hooks_agent,
+    run_linkedin_outline_agent,
+    run_linkedin_polish_agent,
+    run_newsletter_agent,
+)
+from db.models import BlueskySettings, Brand, LinkedInSettings, NewsletterSettings
 
 # Matches the reliability bar this was tuned against — see module docstring.
 # All N attempts are expected to succeed; an occasional failure here is
@@ -114,4 +125,59 @@ async def test_newsletter_generation_reliability():
 
     assert not failures, (
         f"{len(failures)}/{ATTEMPTS} newsletter generation attempts failed:\n" + "\n".join(failures)
+    )
+
+
+@pytest.mark.eval
+async def test_linkedin_generation_reliability():
+    """N/N full wizard pipelines (hooks -> hashtags -> outline -> draft ->
+    polish) succeed with correctly-shaped output at every step, each step
+    informed by the real output of the one before it — not synthetic,
+    isolated inputs. `polish` is the schema worth watching most closely
+    (see agent/agents/linkedin.py's module docstring: a string field plus a
+    list-of-strings field is structurally similar to the original combined
+    NewsletterOutput that turned out unreliable), so this exercises it in
+    the actual multi-step context it will really run in, not alone.
+    """
+    brand = _brand()
+    settings = LinkedInSettings(brand_id=brand.id, instructions="Keep a friendly, expert tone.")
+
+    failures: list[str] = []
+    for i in range(ATTEMPTS):
+        deps = LinkedInDeps(
+            brand=brand, settings=settings, concept=f"Launching a new product, attempt {i + 1}"
+        )
+        try:
+            hooks = await run_linkedin_hooks_agent(deps)
+            if len(hooks) != 5:
+                failures.append(f"attempt {i + 1}: {len(hooks)} hooks, want 5")
+                continue
+            deps.accepted_hook = hooks[0].hook_text
+
+            hashtags = await run_linkedin_hashtags_agent(deps)
+            if len(hashtags) != 10:
+                failures.append(f"attempt {i + 1}: {len(hashtags)} hashtags, want 10")
+                continue
+            deps.accepted_hashtags = [tag.hashtag for tag in hashtags[:3]]
+
+            outline = await run_linkedin_outline_agent(deps)
+            if not outline:
+                failures.append(f"attempt {i + 1}: empty outline")
+                continue
+            deps.outline_bullets = outline
+
+            draft = await run_linkedin_draft_agent(deps)
+            if not draft.strip():
+                failures.append(f"attempt {i + 1}: empty draft")
+                continue
+            deps.draft_text = draft
+
+            polish = await run_linkedin_polish_agent(deps)
+            if not polish.corrected_text.strip():
+                failures.append(f"attempt {i + 1}: empty polish.corrected_text")
+        except Exception as e:  # noqa: BLE001 — deliberately broad: any failure counts
+            failures.append(f"attempt {i + 1}: raised {e!r}")
+
+    assert not failures, (
+        f"{len(failures)}/{ATTEMPTS} LinkedIn generation attempts failed:\n" + "\n".join(failures)
     )

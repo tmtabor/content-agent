@@ -1,0 +1,15 @@
+{% include "partials/linkedin_steps.html" %}
+<div class="card">
+  <form hx-post="/brands/{{ brand_id }}/linkedin/hooks/generate" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+    <div class="field">
+      <label for="concept">Content idea</label>
+      <textarea id="concept" name="concept" rows="3" required placeholder="What should this post be about?">{{ state.concept }}</textarea>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">
+        <span class="btn-text">Next</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

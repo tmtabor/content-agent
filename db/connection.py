@@ -46,13 +46,52 @@ def _apply_additive_migrations(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
+def _recreate_content_history_with_check(conn: sqlite3.Connection) -> None:
+    """SQLite bakes a CHECK constraint's value list into the table at
+    creation time — there's no ALTER TABLE to widen it. An existing db's
+    content_history table still has whichever CHECK was in effect when it
+    was first created; adding a content type (e.g. 'linkedin') means any
+    INSERT using it would be rejected by that old CHECK until the table is
+    rebuilt. `CREATE TABLE IF NOT EXISTS` alone does NOT fix this — it's a
+    no-op against a table that already exists, old CHECK and all.
+
+    A no-op once the current schema.sql's CHECK is already in place (the sql
+    substring check below), so safe to call on every startup.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_history'"
+    ).fetchone()
+    if row is None or "'linkedin'" in row["sql"]:
+        return  # table doesn't exist yet (fresh db — schema.sql's CREATE TABLE covers it) or already migrated
+
+    conn.executescript(
+        """
+        CREATE TABLE content_history_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            brand_id TEXT NOT NULL REFERENCES brands (id) ON DELETE CASCADE,
+            content_type TEXT NOT NULL CHECK (content_type IN ('bluesky', 'newsletter', 'linkedin')),
+            payload TEXT NOT NULL,
+            skypilot_post_id TEXT,
+            scheduled_for TEXT,
+            created_at TEXT NOT NULL
+        );
+        INSERT INTO content_history_new SELECT * FROM content_history;
+        DROP TABLE content_history;
+        ALTER TABLE content_history_new RENAME TO content_history;
+        CREATE INDEX IF NOT EXISTS idx_history_brand_type
+            ON content_history (brand_id, content_type, created_at);
+        """
+    )
+
+
 def init_db() -> None:
-    """Create the schema if it doesn't exist yet, then apply any additive
-    migrations. Safe to call on every startup.
+    """Create the schema if it doesn't exist yet, then apply any migrations.
+    Safe to call on every startup.
     """
     with get_connection() as conn:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         _apply_additive_migrations(conn)
+        _recreate_content_history_with_check(conn)
         conn.commit()
 
 

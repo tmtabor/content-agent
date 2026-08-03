@@ -1,0 +1,36 @@
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-outline">
+  <h2>Outline</h2>
+  <form id="linkedin-outline-form">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+    <div class="field">
+      <label for="outline_text">Bullet points</label>
+      <textarea id="outline_text" name="outline_text" rows="10">{% for bullet in state.outline_bullets %}{{ bullet }}
+{% endfor %}</textarea>
+      <span class="hint">One point per line. Edit directly, or leave feedback below and Regenerate.</span>
+    </div>
+
+    <div class="field">
+      <label for="feedback">Feedback (optional)</label>
+      <textarea id="feedback" name="feedback" rows="2" placeholder="What should change?"></textarea>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/back"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Back</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/outline/regenerate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-next"
+              hx-post="/brands/{{ brand_id }}/linkedin/draft/generate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Next</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

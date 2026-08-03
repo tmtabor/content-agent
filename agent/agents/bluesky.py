@@ -123,4 +123,9 @@ async def run_bluesky_agent(prompt: str, deps: BlueskyDeps) -> BlueskyOutput:
     logger.info("Running Bluesky agent", extra={"brand_id": deps.brand.id, "prompt": prompt})
     result = await bluesky_agent.run(prompt, deps=deps, usage_limits=USAGE_LIMITS)
     logger.info("Bluesky agent run complete", extra={"post_count": len(result.output.posts)})
+    # Only visible with AGENT_DEBUG=true (see agent/logging.py) — nothing
+    # else captures the actual generated content on a *successful* call;
+    # validation failures show a snippet via the exception, but a
+    # technically-valid, badly-written response otherwise leaves no trace.
+    logger.debug("Bluesky agent output", extra={"posts": result.output.posts})
     return result.output

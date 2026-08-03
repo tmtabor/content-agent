@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}LinkedIn — {{ brand.name }}{% endblock %}
+{% block content %}
+<h1>LinkedIn</h1>
+<p class="subtitle">Guided post wizard for {{ brand.name }}: concept &rarr; hooks &rarr; hashtags &rarr; outline &rarr; draft &rarr; final polish.</p>
+<div id="linkedin-wizard">
+  {% include "partials/linkedin_concept.html" %}
+</div>
+{% endblock %}

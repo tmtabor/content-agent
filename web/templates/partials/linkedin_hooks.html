@@ -1,0 +1,57 @@
+{% set ns = namespace(matched_index=none) %}
+{% for hook in state.hook_options %}
+  {% if hook.hook_text == state.accepted_hook %}{% set ns.matched_index = loop.index0 %}{% endif %}
+{% endfor %}
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-hooks">
+  <h2>Choose a hook</h2>
+  <p class="subtitle">Select one, edit it, or write your own.</p>
+  <form id="linkedin-hooks-form">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+
+    {% for hook in state.hook_options %}
+    <div class="post-item">
+      <label>
+        <input type="radio" name="selected_hook" value="{{ loop.index0 }}"
+               {% if ns.matched_index == loop.index0 or (ns.matched_index is none and loop.index0 == 0) %}checked{% endif %} />
+        Hook {{ loop.index }}
+      </label>
+      <textarea name="hook_text_{{ loop.index0 }}" rows="2">{{ hook.hook_text }}</textarea>
+      <div class="hint">{{ hook.explanation }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="post-item">
+      <label>
+        <input type="radio" name="selected_hook" value="custom"
+               {% if ns.matched_index is none and state.accepted_hook %}checked{% endif %} />
+        Write your own
+      </label>
+      <textarea name="hook_text_custom" rows="2" placeholder="Write your own hook">{% if ns.matched_index is none %}{{ state.accepted_hook }}{% endif %}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="regen_instructions">Additional instructions for regenerating (optional)</label>
+      <input type="text" id="regen_instructions" name="regen_instructions"
+             placeholder="e.g. avoid focusing on price" />
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/back"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Back</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin/hooks/regenerate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Regenerate</span><span class="spinner"></span>
+      </button>
+      <button type="button" class="btn btn-next"
+              hx-post="/brands/{{ brand_id }}/linkedin/hashtags/generate"
+              hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Next</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

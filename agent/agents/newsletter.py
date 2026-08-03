@@ -195,6 +195,9 @@ async def run_newsletter_agent(
     )
     body_result = await newsletter_body_agent.run(prompt, deps=deps, usage_limits=USAGE_LIMITS)
     body_html = body_result.output.body_html
+    # Only visible with AGENT_DEBUG=true (see agent/logging.py) — nothing
+    # else captures the actual generated content on a *successful* call.
+    logger.debug("Newsletter body agent output", extra={"body_html": body_html})
 
     if on_phase:
         on_phase("Generating subject lines")
@@ -202,6 +205,10 @@ async def run_newsletter_agent(
     subjects_deps = replace(deps, body_html=body_html)
     subjects_result = await newsletter_subjects_agent.run(
         prompt, deps=subjects_deps, usage_limits=USAGE_LIMITS
+    )
+    logger.debug(
+        "Newsletter subjects agent output",
+        extra={"subject_pairs": subjects_result.output.subject_pairs},
     )
 
     logger.info("Newsletter agent run complete")

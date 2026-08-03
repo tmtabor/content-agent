@@ -20,6 +20,8 @@ from db.models import (
     Brand,
     ContentHistoryEntry,
     ContentType,
+    LinkedInContent,
+    LinkedInSettings,
     NewsletterContent,
     NewsletterSettings,
 )
@@ -29,9 +31,12 @@ from db.models import (
 # back into generation never grows unbounded.
 HISTORY_LIMIT = 20
 
-_PAYLOAD_MODELS: dict[ContentType, type[BlueskyContent] | type[NewsletterContent]] = {
+_PAYLOAD_MODELS: dict[
+    ContentType, type[BlueskyContent] | type[NewsletterContent] | type[LinkedInContent]
+] = {
     "bluesky": BlueskyContent,
     "newsletter": NewsletterContent,
+    "linkedin": LinkedInContent,
 }
 
 
@@ -81,6 +86,7 @@ def create_brand(
         )
         conn.execute("INSERT INTO bluesky_settings (brand_id) VALUES (?)", (brand_id,))
         conn.execute("INSERT INTO newsletter_settings (brand_id) VALUES (?)", (brand_id,))
+        conn.execute("INSERT INTO linkedin_settings (brand_id) VALUES (?)", (brand_id,))
     return Brand(
         id=brand_id,
         name=name,
@@ -178,13 +184,38 @@ def update_newsletter_settings(
     )
 
 
+def get_linkedin_settings(brand_id: str) -> LinkedInSettings:
+    with db_session() as conn:
+        row = conn.execute(
+            "SELECT * FROM linkedin_settings WHERE brand_id = ?", (brand_id,)
+        ).fetchone()
+    if row is None:
+        return LinkedInSettings(brand_id=brand_id)
+    return LinkedInSettings(brand_id=row["brand_id"], instructions=row["instructions"])
+
+
+def update_linkedin_settings(brand_id: str, instructions: str) -> LinkedInSettings:
+    """Upsert, not a plain UPDATE: linkedin_settings is a table added after
+    brands could already exist (unlike html_template, an ADD COLUMN on an
+    existing table), so any brand created before this feature shipped has
+    no row here yet — an UPDATE alone would silently affect zero rows.
+    """
+    with db_session() as conn:
+        conn.execute(
+            """INSERT INTO linkedin_settings (brand_id, instructions) VALUES (?, ?)
+               ON CONFLICT (brand_id) DO UPDATE SET instructions = excluded.instructions""",
+            (brand_id, instructions),
+        )
+    return LinkedInSettings(brand_id=brand_id, instructions=instructions)
+
+
 # --- Content history ---
 
 
 def add_content_history(
     brand_id: str,
     content_type: ContentType,
-    payload: BlueskyContent | NewsletterContent,
+    payload: BlueskyContent | NewsletterContent | LinkedInContent,
     skypilot_post_id: str | None = None,
     scheduled_for: datetime | None = None,
 ) -> ContentHistoryEntry:
@@ -256,6 +287,16 @@ def recent_bluesky_texts(brand_id: str, limit: int = HISTORY_LIMIT) -> list[str]
     for entry in entries:
         assert isinstance(entry.payload, BlueskyContent)
         texts.append(" / ".join(post.text for post in entry.payload.posts))
+    return texts
+
+
+def recent_linkedin_texts(brand_id: str, limit: int = HISTORY_LIMIT) -> list[str]:
+    """Each past post's final text, most recent first."""
+    entries = list_content_history(brand_id, "linkedin")[:limit]
+    texts = []
+    for entry in entries:
+        assert isinstance(entry.payload, LinkedInContent)
+        texts.append(entry.payload.post_text)
     return texts
 
 

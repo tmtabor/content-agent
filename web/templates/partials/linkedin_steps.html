@@ -1,0 +1,18 @@
+{# Step/progress indicator for the LinkedIn wizard. Self-contained (derives
+   its own current-step index from `state.step`, already in context in every
+   partial that includes it) rather than requiring the router to pass an
+   extra index — keeps with the existing pattern of each wizard partial
+   being independently swappable into #linkedin-wizard. #}
+{% set step_keys = ["concept", "hooks", "hashtags", "outline", "draft", "polish"] %}
+{% set step_labels = ["Concept", "Hook", "Hashtags", "Outline", "Draft", "Polish"] %}
+{% set current_index = step_keys.index(step if step is defined else state.step) %}
+<div class="steps-bar">
+  <ol class="steps">
+    {% for label in step_labels %}
+    <li class="step{% if loop.index0 < current_index %} step-done{% elif loop.index0 == current_index %} step-current{% endif %}">
+      <span class="step-number">{{ loop.index }}</span>
+      <span class="step-label">{{ label }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</div>

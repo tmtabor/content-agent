@@ -54,6 +54,13 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # Debug mode — a separate switch from log_level, not an overload of it:
+    # "set my log level to DEBUG" and "dump full prompts/HTTP bodies to a
+    # file" are different intents, and conflating them would be a surprising
+    # side effect for anyone who just wants standard Python DEBUG logging.
+    # See agent/logging.py's configure_logging() for what this turns on.
+    debug: bool = False
+
     # SQLite file holding all brand config + content history for this app.
     db_path: str = "content_agent.db"
 

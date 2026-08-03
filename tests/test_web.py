@@ -1,18 +1,12 @@
 """End-to-end web tests via FastAPI's TestClient.
 
-Uses `with TestClient(app) as client:` so the lifespan handler runs and
-calls init_db() against the per-test temp db (see tests/conftest.py's
-temp_db fixture, which points settings.db_path there before this module's
-app is even imported). raise_server_exceptions=False matches the
-agent-web-ui skill's guidance so a 500 shows up as a status code, not an
-uncaught exception failing the test in a confusing place.
+Uses the shared `client` fixture from tests/conftest.py (`with
+TestClient(app) as client:`, so the lifespan handler runs and calls
+init_db() against the per-test temp db).
 """
 
 import re
 import time
-
-import pytest
-from fastapi.testclient import TestClient
 
 from db.repository import (
     create_brand,
@@ -20,13 +14,6 @@ from db.repository import (
     get_newsletter_settings,
     list_content_history,
 )
-from web.main import app
-
-
-@pytest.fixture
-def client():
-    with TestClient(app, raise_server_exceptions=False) as c:
-        yield c
 
 
 def _create_brand(**overrides):

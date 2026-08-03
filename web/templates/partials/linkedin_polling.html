@@ -1,0 +1,17 @@
+{# Self-refreshing poll, same pattern as partials/newsletter_polling.html —
+   htmx processes hx-* attributes on content it just swapped in, so as long
+   as the job is still running, each response re-renders this same partial
+   (with the latest phase) and it re-triggers itself. Once the job
+   finishes, the status endpoint swaps in the target step's partial
+   instead, which has no such trigger, ending the loop. #}
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-polling">
+  <div class="generating-status"
+       hx-get="/brands/{{ brand_id }}/linkedin/status/{{ job_id }}"
+       hx-trigger="load delay:1s"
+       hx-target="#linkedin-wizard"
+       hx-swap="innerHTML">
+    <span class="spinner-active"></span>
+    <span>{{ phase }}&hellip;</span>
+  </div>
+</div>

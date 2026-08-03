@@ -11,12 +11,14 @@ from db.repository import (
     delete_content_history_entry,
     get_bluesky_settings,
     get_brand,
+    get_linkedin_settings,
     get_newsletter_settings,
     list_brands,
     list_content_history,
     purge_content_history,
     update_bluesky_settings,
     update_brand,
+    update_linkedin_settings,
     update_newsletter_settings,
 )
 from web.context import base_context
@@ -42,8 +44,10 @@ async def settings_page(request: Request, brand_id: str) -> HTMLResponse:
             "brand": brand,
             "bluesky_settings": get_bluesky_settings(brand_id),
             "newsletter_settings": get_newsletter_settings(brand_id),
+            "linkedin_settings": get_linkedin_settings(brand_id),
             "bluesky_history": list_content_history(brand_id, "bluesky"),
             "newsletter_history": list_content_history(brand_id, "newsletter"),
+            "linkedin_history": list_content_history(brand_id, "linkedin"),
         }
     )
     return templates.TemplateResponse(request, "settings.html", context)
@@ -99,6 +103,16 @@ async def update_newsletter_settings_endpoint(
 ) -> RedirectResponse:
     _get_brand_or_404(brand_id)
     update_newsletter_settings(brand_id, instructions=instructions, html_template=html_template)
+    return RedirectResponse(f"/brands/{brand_id}/settings", status_code=303)
+
+
+@router.post("/brands/{brand_id}/linkedin-settings")
+async def update_linkedin_settings_endpoint(
+    brand_id: str,
+    instructions: str = Form(""),
+) -> RedirectResponse:
+    _get_brand_or_404(brand_id)
+    update_linkedin_settings(brand_id, instructions=instructions)
     return RedirectResponse(f"/brands/{brand_id}/settings", status_code=303)
 
 

@@ -1,0 +1,58 @@
+{% include "partials/linkedin_steps.html" %}
+<div class="card" id="linkedin-polish">
+  <h2>Final review</h2>
+
+  {% if state.polish_result and state.polish_result.changes %}
+  <div class="field">
+    <label>Changes made</label>
+    <ul>
+      {% for change in state.polish_result.changes %}<li>{{ change }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% elif state.polish_result %}
+  <p class="empty-state">No changes needed.</p>
+  {% endif %}
+
+  <div class="polish-columns">
+    <div class="polish-column">
+      <h3>Original</h3>
+      <form hx-post="/brands/{{ brand_id }}/linkedin/mark-used" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <textarea id="polish_original" name="post_text" rows="14">{{ state.polish_original }}</textarea>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary"
+                  onclick="navigator.clipboard.writeText(document.getElementById('polish_original').value)">
+            Copy to Clipboard
+          </button>
+          <button type="submit" class="btn">
+            <span class="btn-text">Mark as Used</span><span class="spinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="polish-column">
+      <h3>Corrected</h3>
+      <form hx-post="/brands/{{ brand_id }}/linkedin/mark-used" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+        <textarea id="polish_corrected" name="post_text" rows="14">{{ state.polish_result.corrected_text if state.polish_result else "" }}</textarea>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary"
+                  onclick="navigator.clipboard.writeText(document.getElementById('polish_corrected').value)">
+            Copy to Clipboard
+          </button>
+          <button type="submit" class="btn">
+            <span class="btn-text">Mark as Used</span><span class="spinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <form class="actions">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+    <button type="button" class="btn btn-secondary"
+            hx-post="/brands/{{ brand_id }}/linkedin/back"
+            hx-include="closest form" hx-target="#linkedin-wizard" hx-swap="innerHTML">
+      <span class="btn-text">Back</span><span class="spinner"></span>
+    </button>
+  </form>
+</div>

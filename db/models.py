@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ContentType = Literal["bluesky", "newsletter"]
+ContentType = Literal["bluesky", "newsletter", "linkedin"]
 
 
 class Brand(BaseModel):
@@ -59,11 +59,25 @@ class NewsletterContent(BaseModel):
     subject_pairs: list[SubjectPair] = Field(min_length=5, max_length=5)
 
 
+class LinkedInSettings(BaseModel):
+    brand_id: str
+    instructions: str = ""
+
+
+class LinkedInContent(BaseModel):
+    """What "Mark as Used" saves — final text only, matching Bluesky/Newsletter
+    precedent. The wizard's intermediate state (hooks, hashtags, outline,
+    feedback log) lives only in the in-progress form, not in history.
+    """
+
+    post_text: str
+
+
 class ContentHistoryEntry(BaseModel):
     id: int
     brand_id: str
     content_type: ContentType
-    payload: BlueskyContent | NewsletterContent
+    payload: BlueskyContent | NewsletterContent | LinkedInContent
     skypilot_post_id: str | None = None
     scheduled_for: datetime | None = None
     created_at: datetime

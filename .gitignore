@@ -18,3 +18,6 @@ logfire_credentials.json
 *.db-journal
 *.db-wal
 *.db-shm
+
+# AGENT_DEBUG=true log output — see agent/logging.py
+logs/

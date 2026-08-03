@@ -58,7 +58,7 @@ def override_all_agents_with_test_model():
     modules a test imports lazily in its body — otherwise a module first
     imported mid-test would escape the net.
     """
-    for module_name in ("bluesky", "newsletter"):
+    for module_name in ("bluesky", "newsletter", "linkedin"):
         with suppress(ModuleNotFoundError):
             importlib.import_module(f"agent.agents.{module_name}")
 
@@ -69,3 +69,25 @@ def override_all_agents_with_test_model():
                     if isinstance(value, Agent):
                         stack.enter_context(value.override(model=TestModel()))
         yield
+
+
+@pytest.fixture
+def client():
+    """Shared FastAPI TestClient for web-layer tests (tests/test_web.py,
+    tests/test_linkedin_web.py). Imported lazily inside the fixture, not at
+    module level, so test files that never touch the web app (test_db.py,
+    test_*_agent.py) don't pay the cost of importing FastAPI/web.main.
+
+    Used as `with TestClient(app) as client:` so the lifespan handler runs
+    and calls init_db() against the per-test temp db from temp_db above
+    (which has already repointed settings.db_path by the time this runs).
+    raise_server_exceptions=False matches the agent-web-ui skill's guidance
+    so a 500 shows up as a status code, not an uncaught exception failing
+    the test in a confusing place.
+    """
+    from fastapi.testclient import TestClient
+
+    from web.main import app
+
+    with TestClient(app, raise_server_exceptions=False) as c:
+        yield c

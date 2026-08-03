@@ -10,6 +10,7 @@ from db.repository import list_brands
 CONTENT_AGENTS = [
     {"key": "bluesky", "label": "Bluesky"},
     {"key": "newsletter", "label": "Newsletter"},
+    {"key": "linkedin", "label": "LinkedIn"},
 ]
 
 
