@@ -93,6 +93,31 @@ def test_from_linkedin_handoff_prefills_source_text(client):
     assert "A post written on the LinkedIn wizard&#39;s Polish step." in response.text
 
 
+def test_from_linkedin_handoff_records_linkedin_history(client):
+    """A user who adapts a post to Bluesky right from the Polish step never
+    clicks LinkedIn's own "Mark as Used" — without this, the post it was
+    built from never showed up in LinkedIn history at all, even though
+    handing it off is itself a clear signal the user is using it.
+    """
+    brand = _create_brand()
+    client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/from-linkedin",
+        data={"source_text": "A post written on the LinkedIn wizard's Polish step."},
+    )
+    entries = list_content_history(brand.id, "linkedin")
+    assert len(entries) == 1
+    assert entries[0].payload.post_text == "A post written on the LinkedIn wizard's Polish step."
+
+
+def test_from_linkedin_handoff_skips_history_for_blank_source_text(client):
+    brand = _create_brand()
+    client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/from-linkedin",
+        data={"source_text": "   "},
+    )
+    assert list_content_history(brand.id, "linkedin") == []
+
+
 def test_generate_then_poll_returns_one_pending_group(client):
     brand = _create_brand()
     results_html = _generate(client, brand.id)

@@ -58,13 +58,21 @@ def _deps(**overrides) -> LinkedInToBlueskyDeps:
 
 
 def test_breakdown_plan_output_accepts_matching_lengths():
-    output = BreakdownPlanOutput(group_sizes=[1, 2], group_topics=["intro", "details"])
+    output = BreakdownPlanOutput(
+        group_sizes=[1, 2],
+        group_topics=["intro", "details"],
+        group_key_points=["We shipped X.", "X does A and B."],
+    )
     assert output.group_sizes == [1, 2]
 
 
 def test_breakdown_plan_output_rejects_mismatched_group_lists():
-    with pytest.raises(ValidationError, match="must be the same length"):
-        BreakdownPlanOutput(group_sizes=[1, 2], group_topics=["only one topic"])
+    with pytest.raises(ValidationError, match="must all be the same length"):
+        BreakdownPlanOutput(
+            group_sizes=[1, 2],
+            group_topics=["only one topic"],
+            group_key_points=["only one entry"],
+        )
 
 
 # --- validate_post_count: depends on ctx.deps.group_size, not the output
@@ -113,16 +121,38 @@ async def test_plan_context_omits_guidelines_when_unset():
     assert "Preference" not in instructions
 
 
-async def test_write_context_describes_this_groups_size_and_topic():
+async def test_write_context_describes_this_groups_size_topic_and_key_points():
     deps = _deps(
         source_text="Our team shipped a huge update this week.",
         group_size=2,
         group_topic="Behind-the-scenes details",
+        group_key_points="We rebuilt onboarding; we added a dashboard.",
     )
     instructions = await write_context(_ctx(deps))
 
     assert "exactly 2 posts" in instructions
     assert "Behind-the-scenes details" in instructions
+    assert "We rebuilt onboarding; we added a dashboard." in instructions
+
+
+async def test_write_context_lists_other_group_topics_as_off_limits():
+    deps = _deps(
+        group_size=1,
+        group_topic="The wrap-up",
+        other_group_topics=["The headline announcement", "Behind-the-scenes details"],
+    )
+    instructions = await write_context(_ctx(deps))
+
+    assert "OTHER groups" in instructions
+    assert "The headline announcement" in instructions
+    assert "Behind-the-scenes details" in instructions
+
+
+async def test_write_context_omits_other_group_topics_when_none_given():
+    deps = _deps(group_size=1, group_topic="The only group")
+    instructions = await write_context(_ctx(deps))
+
+    assert "OTHER groups" not in instructions
 
 
 async def test_write_context_includes_earlier_groups_when_present():

@@ -101,15 +101,22 @@ class LinkedInToBlueskyDeps:
     recent_posts: list[str] = field(default_factory=list)  # recent_bluesky_texts(brand_id)
     feedback_log: list[str] = field(default_factory=list)
     # Set via dataclasses.replace before each per-group write call; unused
-    # by the plan call itself. group_size/group_topic describe the one
-    # group this particular write call is writing (see module docstring for
-    # why it's one call per group, not one call for the whole plan).
-    # written_so_far accumulates every earlier group's posts in this same
-    # plan, purely so later groups can avoid repeating the same phrasing —
-    # groups never depend on each other's *content* (see write_posts_agent's
-    # instructions).
+    # by the plan call itself. group_size/group_topic/group_key_points
+    # describe the one group this particular write call is writing (see
+    # module docstring for why it's one call per group, not one call for
+    # the whole plan). other_group_topics lists every other group's topic,
+    # so the write call has an explicit negative constraint ("these are
+    # someone else's job") instead of only a positive one ("cover this") —
+    # a real run showed every group's post independently re-deriving and
+    # restating the LinkedIn post's opening framing regardless of its
+    # assigned topic, because each call only knew what IT was supposed to
+    # cover, never what it was supposed to leave alone. written_so_far
+    # accumulates every earlier group's actual post text, purely so later
+    # groups can avoid repeating the same phrasing on top of that.
     group_size: int = 0
     group_topic: str = ""
+    group_key_points: str = ""
+    other_group_topics: list[str] = field(default_factory=list)
     written_so_far: list[str] = field(default_factory=list)
 
 
@@ -145,24 +152,32 @@ def _shared_context_lines(deps: LinkedInToBlueskyDeps) -> list[str]:
 
 
 class BreakdownPlanOutput(BaseModel):
-    """Two parallel flat lists, not a `list[{size, topic}]` — the latter
-    repeats the exact nested-object field-naming risk `HookOption`/
-    `HashtagOption` already demonstrated (agent/agents/linkedin.py), which
-    needed two rounds of prose tuning to stop the model substituting
-    synonym keys for an even simpler 2-field object. Two flat lists are
-    exactly as flat as the already-proven `BlueskyOutput.posts` shape.
+    """Three parallel flat lists, not a `list[{size, topic, key_points}]` —
+    the latter repeats the exact nested-object field-naming risk
+    `HookOption`/`HashtagOption` already demonstrated (agent/agents/linkedin.py),
+    which needed two rounds of prose tuning to stop the model substituting
+    synonym keys for an even simpler 2-field object. Flat lists are exactly
+    as flat as the already-proven `BlueskyOutput.posts` shape.
+
+    group_key_points exists because group_topics alone wasn't enough to
+    keep each group's write call scoped to its own slice of the LinkedIn
+    post — see write_context's docstring below for what that looked like
+    in practice and why a per-group excerpt of the actual content fixes it.
     """
 
     group_sizes: list[Annotated[int, Field(ge=1, le=8)]] = Field(min_length=1, max_length=6)
     group_topics: list[str] = Field(min_length=1, max_length=6)
+    group_key_points: list[str] = Field(min_length=1, max_length=6)
 
     @model_validator(mode="after")
     def _same_length(self) -> BreakdownPlanOutput:
-        if len(self.group_sizes) != len(self.group_topics):
+        lengths = {len(self.group_sizes), len(self.group_topics), len(self.group_key_points)}
+        if len(lengths) != 1:
             raise ValueError(
-                f"group_sizes has {len(self.group_sizes)} items but group_topics has "
-                f"{len(self.group_topics)} — they must be the same length, one size and "
-                "one topic per group, in the same order."
+                f"group_sizes has {len(self.group_sizes)} items, group_topics has "
+                f"{len(self.group_topics)}, and group_key_points has "
+                f"{len(self.group_key_points)} — they must all be the same length, one "
+                "size, one topic, and one key_points entry per group, in the same order."
             )
         return self
 
@@ -181,10 +196,18 @@ Decide how to split the LinkedIn post's content into one or more groups. Each gr
 becomes either one standalone Bluesky post (a group of size 1, understandable on its
 own with no other context) or a thread of sequential posts (a group of size greater
 than 1, where each post continues only the post before it within that same group —
-never depending on a different group).
+never depending on a different group). Every group must cover a genuinely distinct
+slice of the post's content — if two groups would end up making essentially the same
+point, merge them into one group instead.
 
-Produce two lists, the same length and in the same order: group_sizes (each group's
-post count) and group_topics (a short phrase describing what that group covers).
+Produce three lists, the same length and in the same order: group_sizes (each group's
+post count), group_topics (a short phrase describing what that group covers), and
+group_key_points (the specific facts, claims, or steps from the LinkedIn post that
+belong to THIS group and no other — quote or closely paraphrase the source text, don't
+just restate the topic phrase in different words). group_key_points matters because
+each group gets written by a separate call that only sees its own entry — content you
+don't put in a group's key_points won't reliably reach it, and content you duplicate
+across multiple groups' key_points will produce near-duplicate posts.
 
 If a target total post count is given below, treat it as a soft guideline for the sum
 of group_sizes, not a hard requirement. If a preference for independent posts vs. a
@@ -226,21 +249,29 @@ write_posts_agent: Agent[LinkedInToBlueskyDeps, WritePostsOutput] = Agent(
     deps_type=LinkedInToBlueskyDeps,
     retries=_RETRIES,
     model_settings=_MODEL_SETTINGS,
-    instructions="""You write Bluesky posts, adapting a LinkedIn post per one group of an
-already-decided breakdown plan. A separate call handles each other group in the plan —
-you only write this one group's posts; do not write posts for any other group.
+    instructions="""You write Bluesky posts, adapting one group's slice of a LinkedIn post
+per an already-decided breakdown plan. A separate call handles each other group in the
+plan — you only write this one group's posts; do not write posts for any other group.
 
-The group's post count and topic are given in the context below — return exactly that
-many posts, in order, and nothing else.
+The context below gives you this group's key_points — the specific facts/claims from
+the LinkedIn post that belong to this group. Cover ONLY those points. The full LinkedIn
+post is also given, but purely as background for tone and factual accuracy — it is NOT
+extra material to draw from, and other groups are separately covering the rest of it.
+In particular, don't restate the post's opening framing or hook just because it's the
+first thing in the source text — write only what this group's key_points cover. The
+context also lists the OTHER groups' topics; treat those as off-limits here, even
+briefly or in different words, since another call is already covering them.
+
+The group's post count is given in the context below — return exactly that many posts,
+in order, and nothing else.
 
 If the group has only one post, it must be fully self-contained — understandable on its
 own, with no reference to "the previous post" or anything outside itself. If the group
 has more than one post, it's a thread: each post continues only the post before it
 within this same group.
 
-Every post must be 300 characters or fewer, including any hashtags. Ground every post
-in the LinkedIn post's actual content — don't invent facts it doesn't contain. Write in
-the brand's voice, for its audience.""",
+Every post must be 300 characters or fewer, including any hashtags. Write in the
+brand's voice, for its audience.""",
 )
 
 
@@ -271,14 +302,34 @@ async def validate_post_count(
 
 @write_posts_agent.instructions
 async def write_context(ctx: RunContext[LinkedInToBlueskyDeps]) -> str:
+    """Feeding the whole LinkedIn post to every group's write call, with
+    only a phrasing-level "avoid repeating this" nudge (written_so_far), was
+    not enough on its own — a real run's plan correctly split the post into
+    4 distinct topics, but every group's write call still gravitated back
+    toward restating the post's opening framing (the thing right at the top
+    of the source text it's given every time), producing 4 near-duplicate
+    posts despite 4 genuinely different planned topics. group_key_points and
+    other_group_topics below are the fix: a positive scope (cover only
+    these specific points) and a negative one (these topics are someone
+    else's job), instead of relying on the model to infer scope boundaries
+    from an undifferentiated wall of source text every single call.
+    """
     deps = ctx.deps
     lines = [
         *_shared_context_lines(deps),
-        f"LinkedIn post to adapt:\n{deps.source_text}",
+        f"LinkedIn post to adapt (background/tone/factual-accuracy reference only — "
+        f"see this group's key_points below for what to actually cover):\n{deps.source_text}",
         f"This call writes exactly {deps.group_size} "
-        f"post{'s' if deps.group_size != 1 else ''} for one group of the breakdown "
-        f"plan: {deps.group_topic}",
+        f"post{'s' if deps.group_size != 1 else ''} for one group of the breakdown plan.\n"
+        f"This group's topic: {deps.group_topic}\n"
+        f"This group's key_points — cover only these: {deps.group_key_points}",
     ]
+    if deps.other_group_topics:
+        others = "\n".join(f"- {topic}" for topic in deps.other_group_topics)
+        lines.append(
+            "Topics covered by OTHER groups in this same plan — do not restate their "
+            f"content here, even briefly or in different words:\n{others}"
+        )
     if deps.written_so_far:
         already = "\n".join(f"- {post}" for post in deps.written_so_far)
         lines.append(
@@ -316,17 +367,24 @@ async def run_linkedin_to_bluesky_agent(
     )
     group_sizes = plan_result.output.group_sizes
     group_topics = plan_result.output.group_topics
+    group_key_points = plan_result.output.group_key_points
     # Only visible with AGENT_DEBUG=true (see agent/logging.py) — nothing
     # else captures the actual generated content on a *successful* call.
     logger.debug(
         "LinkedIn-to-Bluesky plan agent output",
-        extra={"group_sizes": group_sizes, "group_topics": group_topics},
+        extra={
+            "group_sizes": group_sizes,
+            "group_topics": group_topics,
+            "group_key_points": group_key_points,
+        },
     )
 
     logger.info("Running LinkedIn-to-Bluesky write agent", extra={"brand_id": deps.brand.id})
     written_so_far: list[str] = []
     groups: list[LinkedInToBlueskyGroup] = []
-    for i, (size, topic) in enumerate(zip(group_sizes, group_topics, strict=True)):
+    for i, (size, topic, key_points) in enumerate(
+        zip(group_sizes, group_topics, group_key_points, strict=True)
+    ):
         if on_phase:
             phase = (
                 "Writing posts"
@@ -335,7 +393,12 @@ async def run_linkedin_to_bluesky_agent(
             )
             on_phase(phase)
         write_deps = replace(
-            deps, group_size=size, group_topic=topic, written_so_far=written_so_far
+            deps,
+            group_size=size,
+            group_topic=topic,
+            group_key_points=key_points,
+            other_group_topics=[t for j, t in enumerate(group_topics) if j != i],
+            written_so_far=written_so_far,
         )
         write_result = await write_posts_agent.run(
             deps.source_text, deps=write_deps, usage_limits=USAGE_LIMITS

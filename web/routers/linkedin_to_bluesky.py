@@ -31,7 +31,7 @@ from agent.agents import (
     run_linkedin_to_bluesky_agent,
 )
 from agent.logging import get_logger
-from db.models import BlueskyContent, BlueskyPost as StoredBlueskyPost, Brand
+from db.models import BlueskyContent, BlueskyPost as StoredBlueskyPost, Brand, LinkedInContent
 from db.repository import (
     add_content_history,
     get_bluesky_settings,
@@ -170,8 +170,16 @@ async def from_linkedin(
     """Receives the handoff from the LinkedIn wizard's Polish step (see
     partials/linkedin_polish.html) — a real full-page navigation, not an
     htmx swap, since it crosses between two top-level agent pages.
+
+    This is the only place a post reaches LinkedIn history for a user who
+    adapts it to Bluesky right away without first clicking "Mark as Used"
+    on the LinkedIn page itself (see linkedin.py's mark_used) — skipping it
+    here silently dropped the LinkedIn post from history entirely, even
+    though the user clearly intended to use it (enough to hand it off).
     """
     brand = _get_brand_or_404(brand_id)
+    if source_text.strip():
+        add_content_history(brand_id, "linkedin", LinkedInContent(post_text=source_text))
     state = LinkedInToBlueskyWizardState(source_text=source_text)
     return _render_page(request, brand, brand_id, state)
 
