@@ -20,7 +20,7 @@ from agent.logging import configure_logging, get_logger
 from db import init_db
 from db.repository import list_brands
 from web.jobs import run_in_background
-from web.routers import bluesky, brands, linkedin, newsletter, settings
+from web.routers import bluesky, brands, linkedin, linkedin_to_bluesky, newsletter, settings
 
 configure_logging()
 logger = get_logger(__name__)
@@ -74,6 +74,7 @@ app.include_router(brands.router)
 app.include_router(bluesky.router)
 app.include_router(newsletter.router)
 app.include_router(linkedin.router)
+app.include_router(linkedin_to_bluesky.router)
 app.include_router(settings.router)
 
 

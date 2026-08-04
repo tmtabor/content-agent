@@ -1,0 +1,98 @@
+<div id="linkedin-to-bluesky-results">
+  <form id="linkedin-to-bluesky-results-form">
+    <input type="hidden" name="state" value="{{ state_json }}" />
+
+    {% for group in state.groups %}
+    {% set gi = loop.index0 %}
+    <div class="card group-card {% if group.status != 'pending' %}group-done{% endif %}">
+      <div class="group-header">
+        <h3>{{ 'Thread' if group.posts|length > 1 else 'Post' }}</h3>
+        {% if group.status == 'sent' %}
+        <span class="status-badge">Sent</span>
+        {% elif group.status == 'used' %}
+        <span class="status-badge">Used</span>
+        {% endif %}
+      </div>
+
+      {% if group.status == 'pending' %}
+        {% for post_text in group.posts %}
+        <div class="post-item">
+          <label for="post_{{ gi }}_{{ loop.index0 }}">Post {{ loop.index }}{% if group.posts|length > 1 %} of {{ group.posts|length }}{% endif %}</label>
+          <textarea id="post_{{ gi }}_{{ loop.index0 }}" name="post_{{ gi }}_{{ loop.index0 }}" rows="3"
+                    oninput="var c=this.nextElementSibling; c.textContent=this.value.length+' / 300'; c.classList.toggle('over', this.value.length>300);">{{ post_text }}</textarea>
+          <div class="char-counter {% if post_text|length > 300 %}over{% endif %}">{{ post_text|length }} / 300</div>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary"
+                    hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/{{ group.id }}/posts/{{ loop.index0 }}/delete"
+                    hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+              <span class="btn-text">Delete post</span><span class="spinner"></span>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="field" style="max-width:260px;">
+          <label for="scheduled_for_{{ group.id }}">Schedule for (optional)</label>
+          <input type="datetime-local" id="scheduled_for_{{ group.id }}" name="scheduled_for_{{ group.id }}" />
+          <span class="hint">Leave blank to save as a SkyPilot draft.</span>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary"
+                  hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/{{ group.id }}/add-post"
+                  hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+            <span class="btn-text">Add post to this {{ 'thread' if group.posts|length > 1 else 'group' }}</span><span class="spinner"></span>
+          </button>
+          <button type="button" class="btn btn-secondary"
+                  hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/{{ group.id }}/delete"
+                  hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+            <span class="btn-text">Delete this {{ 'thread' if group.posts|length > 1 else 'post' }}</span><span class="spinner"></span>
+          </button>
+          <button type="button" class="btn btn-secondary"
+                  hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/{{ group.id }}/mark-used"
+                  hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+            <span class="btn-text">Mark as Used</span><span class="spinner"></span>
+          </button>
+          <button type="button" class="btn btn-next"
+                  hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/{{ group.id }}/send"
+                  hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+            <span class="btn-text">Send to SkyPilot</span><span class="spinner"></span>
+          </button>
+        </div>
+      {% else %}
+        {% for post_text in group.posts %}
+        <div class="post-item-readonly">{{ post_text }}</div>
+        {% endfor %}
+        {% if group.scheduled_for %}
+        <p class="hint">Scheduled for {{ group.scheduled_for }}.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="empty-state">Nothing left to review — add a new post below, or regenerate.</p>
+    {% endfor %}
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/groups/add"
+              hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+        <span class="btn-text">Add new post</span><span class="spinner"></span>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label for="feedback">Feedback for regenerating (optional)</label>
+        <textarea id="feedback" name="feedback" rows="2" placeholder="What should change about the still-pending posts?"></textarea>
+        <span class="hint">Applies only to posts not yet sent/used. Every regenerate's feedback carries forward to the next.</span>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary"
+                hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/regenerate"
+                hx-include="closest form" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+          <span class="btn-text">Regenerate</span><span class="spinner"></span>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

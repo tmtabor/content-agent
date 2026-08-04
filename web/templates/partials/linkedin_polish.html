@@ -28,6 +28,18 @@
           </button>
         </div>
       </form>
+      {# A genuine full-page navigation, not an htmx swap — crosses between
+         two top-level agent pages, so no hx-* attributes. A sibling form
+         rather than nesting inside the form above (nested forms are
+         invalid HTML); copies the adjacent textarea's live value on submit,
+         the same inline-JS idiom the Copy to Clipboard button already uses. #}
+      <form method="post" action="/brands/{{ brand_id }}/linkedin-to-bluesky/from-linkedin"
+            onsubmit="document.getElementById('handoff_original').value = document.getElementById('polish_original').value">
+        <input type="hidden" id="handoff_original" name="source_text" />
+        <div class="actions">
+          <button type="submit" class="btn btn-secondary">Continue to LinkedIn &rarr; Bluesky</button>
+        </div>
+      </form>
     </div>
 
     <div class="polish-column">
@@ -42,6 +54,13 @@
           <button type="submit" class="btn">
             <span class="btn-text">Mark as Used</span><span class="spinner"></span>
           </button>
+        </div>
+      </form>
+      <form method="post" action="/brands/{{ brand_id }}/linkedin-to-bluesky/from-linkedin"
+            onsubmit="document.getElementById('handoff_corrected').value = document.getElementById('polish_corrected').value">
+        <input type="hidden" id="handoff_corrected" name="source_text" />
+        <div class="actions">
+          <button type="submit" class="btn btn-secondary">Continue to LinkedIn &rarr; Bluesky</button>
         </div>
       </form>
     </div>

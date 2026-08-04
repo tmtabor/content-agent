@@ -229,6 +229,7 @@ h2 {
 .field input[type="text"],
 .field input[type="datetime-local"],
 .field input[type="number"],
+.field select,
 .field textarea {
   width: 100%;
   padding: 9px 11px;
@@ -436,6 +437,48 @@ h2 {
   padding: 12px 14px;
   margin-bottom: 16px;
   font-size: 0.9rem;
+}
+
+/* --- LinkedIn-to-Bluesky post groups --- */
+
+.group-card {
+  margin-bottom: 16px;
+}
+
+.group-card.group-done {
+  opacity: 0.75;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.group-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.post-item-readonly {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--content-bg);
+  white-space: pre-wrap;
+  line-height: 1.5;
 }
 
 .subject-pair {

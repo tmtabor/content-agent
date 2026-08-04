@@ -11,6 +11,7 @@ CONTENT_AGENTS = [
     {"key": "bluesky", "label": "Bluesky"},
     {"key": "newsletter", "label": "Newsletter"},
     {"key": "linkedin", "label": "LinkedIn"},
+    {"key": "linkedin-to-bluesky", "label": "LinkedIn → Bluesky"},
 ]
 
 

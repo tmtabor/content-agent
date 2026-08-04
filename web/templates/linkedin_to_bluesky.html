@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}LinkedIn → Bluesky — {{ brand.name }}{% endblock %}
+{% block content %}
+<h1>LinkedIn &rarr; Bluesky</h1>
+<p class="subtitle">Turn a LinkedIn post into one or more Bluesky posts/threads for {{ brand.name }}. Review, edit, and send before anything goes out.</p>
+<div id="linkedin-to-bluesky-wizard">
+  {% include "partials/linkedin_to_bluesky_input.html" %}
+</div>
+{% endblock %}

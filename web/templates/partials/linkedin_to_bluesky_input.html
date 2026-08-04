@@ -1,0 +1,33 @@
+<div class="card">
+  <form hx-post="/brands/{{ brand_id }}/linkedin-to-bluesky/generate" hx-target="#linkedin-to-bluesky-wizard" hx-swap="innerHTML">
+    <div class="field">
+      <label for="source_text">LinkedIn post text</label>
+      <textarea id="source_text" name="source_text" rows="10" required
+                placeholder="Paste the LinkedIn post to adapt into Bluesky posts...">{{ state.source_text }}</textarea>
+    </div>
+
+    <div class="inline-fields">
+      <div class="field">
+        <label for="target_count">Target number of posts (optional)</label>
+        <input type="number" id="target_count" name="target_count" min="1" max="20"
+               value="{{ state.target_count or '' }}" />
+        <span class="hint">Counts individual posts across everything generated — a guideline, not a hard limit.</span>
+      </div>
+      <div class="field">
+        <label for="thread_preference">Preference (optional)</label>
+        <select id="thread_preference" name="thread_preference">
+          <option value="no_preference" {% if state.thread_preference == 'no_preference' %}selected{% endif %}>No preference</option>
+          <option value="independent" {% if state.thread_preference == 'independent' %}selected{% endif %}>Prefer independent posts</option>
+          <option value="thread" {% if state.thread_preference == 'thread' %}selected{% endif %}>Prefer a thread</option>
+        </select>
+        <span class="hint">Also a guideline — independent posts and threads can still be mixed either way.</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn">
+        <span class="btn-text">Generate</span><span class="spinner"></span>
+      </button>
+    </div>
+  </form>
+</div>

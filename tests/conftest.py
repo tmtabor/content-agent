@@ -58,7 +58,7 @@ def override_all_agents_with_test_model():
     modules a test imports lazily in its body — otherwise a module first
     imported mid-test would escape the net.
     """
-    for module_name in ("bluesky", "newsletter", "linkedin"):
+    for module_name in ("bluesky", "newsletter", "linkedin", "linkedin_to_bluesky"):
         with suppress(ModuleNotFoundError):
             importlib.import_module(f"agent.agents.{module_name}")
 

@@ -36,6 +36,7 @@ import pytest
 from agent.agents import (
     BlueskyDeps,
     LinkedInDeps,
+    LinkedInToBlueskyDeps,
     NewsletterDeps,
     run_bluesky_agent,
     run_linkedin_draft_agent,
@@ -43,6 +44,7 @@ from agent.agents import (
     run_linkedin_hooks_agent,
     run_linkedin_outline_agent,
     run_linkedin_polish_agent,
+    run_linkedin_to_bluesky_agent,
     run_newsletter_agent,
 )
 from db.models import BlueskySettings, Brand, LinkedInSettings, NewsletterSettings
@@ -180,4 +182,55 @@ async def test_linkedin_generation_reliability():
 
     assert not failures, (
         f"{len(failures)}/{ATTEMPTS} LinkedIn generation attempts failed:\n" + "\n".join(failures)
+    )
+
+
+@pytest.mark.eval
+async def test_linkedin_to_bluesky_generation_reliability():
+    """N/N runs of the plan-then-write pipeline succeed with every post
+    respecting the 300-char cap.
+
+    The invariant unique to this agent — total posts always equals
+    sum(group_sizes) — isn't asserted directly here because it doesn't need
+    to be: agent/agents/linkedin_to_bluesky.py's validate_post_count raises
+    ModelRetry on a mismatch, and pydantic-ai turns an unresolved ModelRetry
+    into a hard failure once retries are exhausted. So a run reaching this
+    point without raising is itself proof the counts converged — this eval
+    is what actually exercises that ModelRetry path against the real model
+    (see tests/test_linkedin_to_bluesky_agent.py for the direct, isolated
+    unit test of validate_post_count, which TestModel can't exercise
+    end-to-end).
+    """
+    brand = _brand()
+    settings = BlueskySettings(brand_id=brand.id, hashtags="#ttrpgsky")
+    source_text = (
+        "Excited to share our team just shipped a major platform update! Over the past "
+        "three months we rebuilt onboarding from the ground up, cutting time-to-first-value "
+        "from 20 minutes to under 3. We also added a real-time analytics dashboard. None of "
+        "this would have been possible without an incredible team. Check out the new "
+        "dashboard today — we'd love your feedback!"
+    )
+
+    failures: list[str] = []
+    for i in range(ATTEMPTS):
+        deps = LinkedInToBlueskyDeps(
+            brand=brand, settings=settings, source_text=source_text, target_count=4
+        )
+        try:
+            groups = await run_linkedin_to_bluesky_agent(deps)
+        except Exception as e:  # noqa: BLE001 — deliberately broad: any failure counts
+            failures.append(f"attempt {i + 1}: raised {e!r}")
+            continue
+
+        if not groups:
+            failures.append(f"attempt {i + 1}: no groups returned")
+            continue
+        for group in groups:
+            for post in group.posts:
+                if len(post) > 300:
+                    failures.append(f"attempt {i + 1}: post exceeded 300 chars ({len(post)})")
+
+    assert not failures, (
+        f"{len(failures)}/{ATTEMPTS} LinkedIn-to-Bluesky generation attempts failed:\n"
+        + "\n".join(failures)
     )

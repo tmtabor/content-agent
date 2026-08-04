@@ -2,12 +2,14 @@
 
 The template's single-canonical-name convention (`run_agent`, `AgentOutput`,
 `AgentDeps`, `agent` — see the deleted agent/agents/single.py) assumed one
-agent per app. This app has three independent content agents now, each
+agent per app. This app has four independent content agents now, each
 exported under its own name instead of forcing a shared canonical name that
 no longer fits. Newsletter generation is split into two smaller sequential
-calls (body, then subjects) — see agent/agents/newsletter.py for why — and
-LinkedIn generation into five (see agent/agents/linkedin.py), so all of
-their Agent objects are exported here, not just one per module.
+calls (body, then subjects) — see agent/agents/newsletter.py for why —
+LinkedIn generation into five (see agent/agents/linkedin.py), and
+LinkedIn-to-Bluesky into two (plan, then write — see
+agent/agents/linkedin_to_bluesky.py), so all of their Agent objects are
+exported here, not just one per module.
 """
 
 from agent.agents.bluesky import (
@@ -34,6 +36,17 @@ from agent.agents.linkedin import (
     run_linkedin_hooks_agent,
     run_linkedin_outline_agent,
     run_linkedin_polish_agent,
+)
+from agent.agents.linkedin_to_bluesky import (
+    USAGE_LIMITS as LINKEDIN_TO_BLUESKY_USAGE_LIMITS,
+    BreakdownPlanOutput,
+    LinkedInToBlueskyDeps,
+    LinkedInToBlueskyGroup,
+    LinkedInToBlueskyWizardState,
+    WritePostsOutput,
+    breakdown_plan_agent,
+    run_linkedin_to_bluesky_agent,
+    write_posts_agent,
 )
 from agent.agents.newsletter import (
     USAGE_LIMITS as NEWSLETTER_USAGE_LIMITS,
@@ -74,4 +87,13 @@ __all__ = [
     "run_linkedin_hooks_agent",
     "run_linkedin_outline_agent",
     "run_linkedin_polish_agent",
+    "LINKEDIN_TO_BLUESKY_USAGE_LIMITS",
+    "BreakdownPlanOutput",
+    "LinkedInToBlueskyDeps",
+    "LinkedInToBlueskyGroup",
+    "LinkedInToBlueskyWizardState",
+    "WritePostsOutput",
+    "breakdown_plan_agent",
+    "run_linkedin_to_bluesky_agent",
+    "write_posts_agent",
 ]

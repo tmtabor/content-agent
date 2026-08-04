@@ -1,0 +1,10 @@
+<div class="card" id="linkedin-to-bluesky-polling">
+  <div class="generating-status"
+       hx-get="/brands/{{ brand_id }}/linkedin-to-bluesky/status/{{ job_id }}"
+       hx-trigger="load delay:1s"
+       hx-target="#linkedin-to-bluesky-wizard"
+       hx-swap="innerHTML">
+    <span class="spinner-active"></span>
+    <span>{{ phase }}&hellip;</span>
+  </div>
+</div>
