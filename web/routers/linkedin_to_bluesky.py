@@ -282,6 +282,13 @@ async def send_group(request: Request, brand_id: str, group_id: str) -> HTMLResp
     texts = [text for text in group.posts if text]
     if not texts:
         return render_error(request, "No post text provided")
+    too_long = [text for text in texts if len(text) > 300]
+    if too_long:
+        return render_error(
+            request,
+            f"Post is {len(too_long[0])} characters — Bluesky posts must be 300 or fewer. "
+            "Edit it and try again.",
+        )
 
     if not brand.skypilot_id:
         return render_error(
@@ -330,6 +337,13 @@ async def mark_used_group(request: Request, brand_id: str, group_id: str) -> HTM
     texts = [text for text in group.posts if text]
     if not texts:
         return render_error(request, "No post text provided")
+    too_long = [text for text in texts if len(text) > 300]
+    if too_long:
+        return render_error(
+            request,
+            f"Post is {len(too_long[0])} characters — Bluesky posts must be 300 or fewer. "
+            "Edit it and try again.",
+        )
 
     add_content_history(
         brand_id, "bluesky", BlueskyContent(posts=[StoredBlueskyPost(text=text) for text in texts])

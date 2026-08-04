@@ -188,6 +188,78 @@ def test_mark_used_group_persists_edited_text_and_shows_used_badge(client):
     assert history[0].payload.posts[0].text == "hand-edited final text"
 
 
+def test_send_group_with_overlong_edited_post_shows_friendly_error(client, monkeypatch):
+    """A user can freely edit post text in a plain <textarea> with no
+    client-side length limit — sending must reject an over-300-char edit
+    with a clear message, not by letting BlueskyPost's own Field(max_length)
+    raise unhandled inside add_content_history.
+    """
+    brand = _create_brand(skypilot_id="sky-abc")
+    results_html = _generate(client, brand.id)
+
+    async def fake_create_post(account_id, texts, scheduled_for=None):
+        raise AssertionError("should not reach SkyPilot with an overlong post")
+
+    monkeypatch.setattr("web.routers.linkedin_to_bluesky.create_post", fake_create_post)
+
+    state = _extract_state(results_html)
+    group_id = _group_ids(results_html)[0]
+    response = client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/groups/{group_id}/send",
+        data={"state": state, "post_0_0": "x" * 301},
+    )
+    assert response.status_code == 200
+    assert "301 characters" in response.text
+    assert list_content_history(brand.id, "bluesky") == []
+
+
+def test_mark_used_group_with_overlong_edited_post_shows_friendly_error(client):
+    brand = _create_brand()
+    results_html = _generate(client, brand.id)
+
+    state = _extract_state(results_html)
+    group_id = _group_ids(results_html)[0]
+    response = client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/groups/{group_id}/mark-used",
+        data={"state": state, "post_0_0": "x" * 301},
+    )
+    assert response.status_code == 200
+    assert "301 characters" in response.text
+    assert list_content_history(brand.id, "bluesky") == []
+
+
+def test_wizard_state_round_trips_after_an_edit_exceeds_300_chars(client):
+    """Regression test for the actual reported bug: editing a post past 300
+    chars used to get silently accepted into the in-memory state (no
+    validation on plain attribute assignment) and then re-serialized into
+    the next response's hidden `state` field — which parsed fine with
+    model_dump_json() but then hard-failed with an unhandled 500 on
+    LinkedInToBlueskyWizardState.model_validate_json() the *next* time any
+    button on the page was clicked, since that path fully re-validates.
+    add_post_to_group neither checks length nor sends anywhere, so it's a
+    clean way to bake an overlong edit into the rendered state; a second,
+    unrelated request must then still succeed instead of 500ing.
+    """
+    brand = _create_brand()
+    results_html = _generate(client, brand.id)
+
+    state = _extract_state(results_html)
+    group_id = _group_ids(results_html)[0]
+    poisoned_response = client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/groups/{group_id}/add-post",
+        data={"state": state, "post_0_0": "x" * 301},
+    )
+    assert poisoned_response.status_code == 200
+    poisoned_state = _extract_state(poisoned_response.text)
+    assert json.loads(poisoned_state)["groups"][0]["posts"][0] == "x" * 301
+
+    second_response = client.post(
+        f"/brands/{brand.id}/linkedin-to-bluesky/groups/{group_id}/add-post",
+        data={"state": poisoned_state, **_pending_post_fields(poisoned_state)},
+    )
+    assert second_response.status_code == 200
+
+
 def test_delete_group_removes_it(client):
     brand = _create_brand()
     results_html = _generate(client, brand.id)

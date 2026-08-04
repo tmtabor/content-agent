@@ -65,10 +65,29 @@ class LinkedInToBlueskyGroup(BaseModel):
     """One independent post (`len(posts) == 1`) or one thread
     (`len(posts) > 1`) — no separate flag; a group's shape is purely its
     post count.
+
+    posts is deliberately NOT length-capped at 300 chars per string here,
+    unlike WritePostsOutput.posts (agent output — should stay strict) or
+    BlueskyPost.text (what's actually sent — checked explicitly in
+    web/routers/linkedin_to_bluesky.py's send_group/mark_used_group). This
+    model round-trips through every request as the hidden `state` form
+    field, and the results page lets the user freely edit post text in a
+    plain <textarea> with no length limit enforced client-side —
+    web/routers/linkedin_to_bluesky.py's _sync_pending_edits writes those
+    edits into `group.posts` via a raw attribute assignment (Pydantic
+    doesn't validate on assignment by default), so an edit that temporarily
+    exceeds 300 chars was silently accepted, then re-serialized into the
+    next response's hidden state field via model_dump_json() (which also
+    doesn't validate). The *next* request to parse that field via
+    model_validate_json() — Send, Mark as Used, Delete, anything — hit a
+    real validator and raised, as an unhandled 500, permanently, since every
+    subsequent request just re-submitted the same now-invalid JSON blob.
+    Enforcing the limit here punished the exact wrong moment (holding
+    in-progress edits) instead of the moment that actually matters (sending).
     """
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    posts: list[Annotated[str, Field(max_length=300)]] = Field(min_length=1)
+    posts: list[str] = Field(min_length=1)
     status: Literal["pending", "sent", "used"] = "pending"
     skypilot_post_id: str | None = None
     scheduled_for: datetime | None = None
