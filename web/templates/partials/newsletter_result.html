@@ -30,7 +30,7 @@
         <span class="btn-text">Regenerate</span><span class="spinner"></span>
       </button>
       <button type="button" class="btn btn-secondary"
-              onclick="navigator.clipboard.writeText(document.getElementById('body_html').value)">
+              onclick="copyToClipboard('body_html', this)">
         Copy to Clipboard
       </button>
       <button type="button" class="btn"

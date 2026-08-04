@@ -20,7 +20,7 @@
         <textarea id="polish_original" name="post_text" rows="14">{{ state.polish_original }}</textarea>
         <div class="actions">
           <button type="button" class="btn btn-secondary"
-                  onclick="navigator.clipboard.writeText(document.getElementById('polish_original').value)">
+                  onclick="copyToClipboard('polish_original', this)">
             Copy to Clipboard
           </button>
           <button type="submit" class="btn">
@@ -48,7 +48,7 @@
         <textarea id="polish_corrected" name="post_text" rows="14">{{ state.polish_result.corrected_text if state.polish_result else "" }}</textarea>
         <div class="actions">
           <button type="button" class="btn btn-secondary"
-                  onclick="navigator.clipboard.writeText(document.getElementById('polish_corrected').value)">
+                  onclick="copyToClipboard('polish_corrected', this)">
             Copy to Clipboard
           </button>
           <button type="submit" class="btn">

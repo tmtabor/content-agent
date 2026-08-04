@@ -367,7 +367,11 @@ in the background above.
 
 If a current draft is given in the context below, you are revising it, not writing a
 new one from scratch — apply the feedback given and leave everything the feedback
-doesn't address unchanged."""
+doesn't address unchanged. Exception: if the feedback asks for a structural change —
+e.g. splitting a paragraph that covers multiple outline points into one paragraph per
+point, or merging paragraphs together — actually restructure the paragraphs to match.
+"Leave unchanged" governs wording and content the feedback didn't mention, not
+paragraph boundaries the feedback explicitly asked you to change."""
     + _NO_MARKDOWN_REMINDER
     + _NO_PROSE_REMINDER,
 )
@@ -411,17 +415,32 @@ polish_agent: Agent[LinkedInDeps, PolishResult] = Agent(
     deps_type=LinkedInDeps,
     retries=_RETRIES,
     model_settings=_MODEL_SETTINGS,
-    instructions="""You proofread and tighten a LinkedIn post.
+    instructions="""You proofread a LinkedIn post. Your only job is correctness, not
+style — the drafting steps before you already made the editorial decisions (wording,
+tone, structure, emphasis). Fix only:
 
-Given the drafted post, look for typos, grammar issues, and places where the post is
-weak, and produce a corrected version (corrected_text). If the drafted post contains
-Markdown syntax (**bold**, *italic*, #headers, -/* lists), replace it with Unicode
-bold/italic character substitutes or plain text — this counts as a fix, note it in
-changes. If nothing needs to change, corrected_text can be identical to the original.
-List every change you made as short, specific bullet points (changes) — e.g. "Fixed
-'recieve' -> 'receive'", "Shortened the third paragraph for punchier flow", "Replaced
-markdown bold with Unicode bold". An empty changes list means no changes were made."""
-    + _NO_MARKDOWN_REMINDER
+1. Typos, spelling, and grammar mistakes — this includes the hook (the post's opening
+   line(s)): fix a genuine typo or misspelling there too, the hook is not exempt from
+   correctness fixes, just from style ones.
+2. Factual or numerical inconsistencies — e.g. the post says "7 steps" but only 5 are
+   actually listed, or a claim contradicts something else stated in the same post.
+3. Literal Markdown syntax (**bold**, *italic*, #headers, -/* list markers). LinkedIn
+   does not render Markdown, so any of it left in the text would show up as literal
+   asterisks/hashes/dashes — replace it with Unicode bold/italic character substitutes
+   (e.g. 𝗕𝗼𝗹𝗱 𝗧𝗲𝘅𝘁) or plain text. This is the one formatting fix in scope, because it's
+   a rendering bug, not a style choice.
+
+Do NOT do any of the following, even if it would read better: rewrite sentences for
+tone or flow, shorten or restructure paragraphs, reorder content, remove or add
+emphasis, or convert prose into a list (or a list into prose). Unicode bold/italic
+that's already correctly used (not literal Markdown syntax) is not an error — leave it
+exactly as the drafter wrote it, even if it looks unusual or list-like to you.
+
+Produce the corrected version (corrected_text) — identical to the original if nothing
+in scope needed a fix. List every change you made as short, specific bullet points
+(changes) — e.g. "Fixed 'recieve' -> 'receive'", "Corrected 'seven steps' to 'five
+steps' to match the actual list", "Replaced literal **bold** markdown with Unicode
+bold". An empty changes list means no changes were made."""
     + _NO_PROSE_REMINDER,
 )
 

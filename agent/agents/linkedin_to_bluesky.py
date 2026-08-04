@@ -1,16 +1,28 @@
 """LinkedIn post -> one or more Bluesky posts/threads, split into two
-sequential agent calls: first plan the breakdown (how many groups, how big
-each is, what each covers), then write the actual post text. Same
-reliability rationale as agent/agents/newsletter.py's body/subjects split
-and agent/agents/linkedin.py's outline/draft split — see CLAUDE.md.
+sequential kinds of agent calls: first plan the breakdown (how many groups,
+how big each is, what each covers), then write the actual post text — one
+call per group. Same reliability rationale as agent/agents/newsletter.py's
+body/subjects split and agent/agents/linkedin.py's outline/draft split —
+see CLAUDE.md.
 
-The write call never has to emit nested/grouped output — it returns one
-flat `list[str]` (the same proven shape as `BlueskyOutput.posts`), and
-`_chunk_posts_into_groups()` deterministically re-groups it using the
-plan's already-decided `group_sizes`. This avoids ever asking gemma4 for a
-nested list or list-of-objects, the class of shape this project has
-repeatedly found unreliable (see `HookOption`/`HashtagOption`'s docstrings
-in agent/agents/linkedin.py).
+The write call is scoped to exactly one group per call, not the whole plan
+at once. An earlier version made a single write call for the entire plan,
+returning one flat `list[str]` re-grouped after the fact using the plan's
+`group_sizes` — but that asks gemma4 to simultaneously hit several exact
+counts within one continuous list (e.g. stop at 2, then stop at 3, then
+stop at 1), and a real run logged in logs/debug.log showed it reliably
+overshooting and exhausting all 3 retries, hard-failing the whole
+generation. Splitting the write call per group reduces that to one exact
+count per call — the same "smaller task, higher reliability" principle
+behind the plan/write split itself, just applied one level deeper. Each
+call still returns a flat `list[str]` (the same proven shape as
+`BlueskyOutput.posts`), just for one group instead of all of them, so this
+still never asks gemma4 for a nested list or list-of-objects, the class of
+shape this project has repeatedly found unreliable (see
+`HookOption`/`HashtagOption`'s docstrings in agent/agents/linkedin.py).
+Groups are written sequentially, each one told what earlier groups in the
+same plan already wrote, so independently-generated groups don't repeat the
+same phrasing or framing.
 
 Reuses `bluesky_settings` (brand voice/hashtags/instructions) and
 `content_type="bluesky"` for history — no new settings table, no schema
@@ -88,10 +100,17 @@ class LinkedInToBlueskyDeps:
     thread_preference: Literal["no_preference", "independent", "thread"] = "no_preference"
     recent_posts: list[str] = field(default_factory=list)  # recent_bluesky_texts(brand_id)
     feedback_log: list[str] = field(default_factory=list)
-    # Set via dataclasses.replace after the plan call; unused by the plan
-    # call itself.
-    group_sizes: list[int] = field(default_factory=list)
-    group_topics: list[str] = field(default_factory=list)
+    # Set via dataclasses.replace before each per-group write call; unused
+    # by the plan call itself. group_size/group_topic describe the one
+    # group this particular write call is writing (see module docstring for
+    # why it's one call per group, not one call for the whole plan).
+    # written_so_far accumulates every earlier group's posts in this same
+    # plan, purely so later groups can avoid repeating the same phrasing —
+    # groups never depend on each other's *content* (see write_posts_agent's
+    # instructions).
+    group_size: int = 0
+    group_topic: str = ""
+    written_so_far: list[str] = field(default_factory=list)
 
 
 def _shared_context_lines(deps: LinkedInToBlueskyDeps) -> list[str]:
@@ -193,9 +212,8 @@ async def plan_context(ctx: RunContext[LinkedInToBlueskyDeps]) -> str:
 
 class WritePostsOutput(BaseModel):
     """Deliberately identical shape to `BlueskyOutput.posts` — the flat
-    schema already trusted against gemma4. A single *ungrouped* list; the
-    code, not the model, re-chunks it into groups (`_chunk_posts_into_groups`
-    below) using the plan's already-known group_sizes.
+    schema already trusted against gemma4. One call writes one group, so
+    this is just that group's posts in order — no re-chunking needed.
     """
 
     posts: list[Annotated[str, Field(max_length=300)]] = Field(min_length=1)
@@ -208,18 +226,17 @@ write_posts_agent: Agent[LinkedInToBlueskyDeps, WritePostsOutput] = Agent(
     deps_type=LinkedInToBlueskyDeps,
     retries=_RETRIES,
     model_settings=_MODEL_SETTINGS,
-    instructions="""You write Bluesky posts, adapting a LinkedIn post per an already-decided
-breakdown plan.
+    instructions="""You write Bluesky posts, adapting a LinkedIn post per one group of an
+already-decided breakdown plan. A separate call handles each other group in the plan —
+you only write this one group's posts; do not write posts for any other group.
 
-The plan (given in the context below) fixes how many groups there are and how many
-posts each group needs — return posts as ONE FLAT LIST, concatenated group by group in
-plan order (this group's posts first, then the next group's, and so on). Do not
-introduce any other grouping or separator in the output.
+The group's post count and topic are given in the context below — return exactly that
+many posts, in order, and nothing else.
 
-A group with only one post must be fully self-contained — understandable on its own,
-with no reference to "the previous post" or anything outside itself. A group with more
-than one post is a thread: each post continues only the post before it within that
-same group, never depending on a different group.
+If the group has only one post, it must be fully self-contained — understandable on its
+own, with no reference to "the previous post" or anything outside itself. If the group
+has more than one post, it's a thread: each post continues only the post before it
+within this same group.
 
 Every post must be 300 characters or fewer, including any hashtags. Ground every post
 in the LinkedIn post's actual content — don't invent facts it doesn't contain. Write in
@@ -231,21 +248,23 @@ the brand's voice, for its audience.""",
 async def validate_post_count(
     ctx: RunContext[LinkedInToBlueskyDeps], data: WritePostsOutput
 ) -> WritePostsOutput:
-    """The expected count depends on ctx.deps.group_sizes — set fresh per
+    """The expected count depends on ctx.deps.group_size — set fresh per
     call from the plan call's output, not anything encoded in
     WritePostsOutput's own schema — so this can't be a model_validator on
     the output model itself (contrast with BreakdownPlanOutput._same_length
     above, whose invariant IS fully self-contained in the model). ModelRetry
     draws from the same retries=3 budget as any other validation failure.
+
+    This only has to match ONE group's size now, not the sum across every
+    group in the plan (see module docstring) — a single small target number
+    instead of several simultaneous ones, which is what actually made the
+    original version's exact-count requirement unreliable against gemma4.
     """
-    expected = sum(ctx.deps.group_sizes)
+    expected = ctx.deps.group_size
     if len(data.posts) != expected:
         raise ModelRetry(
-            f"You returned {len(data.posts)} posts total but the plan requires exactly "
-            f"{expected}, split as {ctx.deps.group_sizes} across "
-            f"{len(ctx.deps.group_sizes)} group(s) in this order: {ctx.deps.group_topics}. "
-            f"Return exactly {expected} posts in `posts`, concatenated group by group in "
-            "that same order, with no other grouping in the output."
+            f"You returned {len(data.posts)} posts but this group ('{ctx.deps.group_topic}') "
+            f"needs exactly {expected}. Return exactly {expected} posts in `posts`, nothing else."
         )
     return data
 
@@ -253,30 +272,20 @@ async def validate_post_count(
 @write_posts_agent.instructions
 async def write_context(ctx: RunContext[LinkedInToBlueskyDeps]) -> str:
     deps = ctx.deps
-    groups_desc = "\n".join(
-        f"- Group {i + 1}: {size} post{'s' if size != 1 else ''} — {topic}"
-        for i, (size, topic) in enumerate(zip(deps.group_sizes, deps.group_topics, strict=True))
-    )
     lines = [
         *_shared_context_lines(deps),
         f"LinkedIn post to adapt:\n{deps.source_text}",
-        f"Breakdown plan — write exactly {sum(deps.group_sizes)} posts total, in this "
-        f"group order:\n{groups_desc}",
+        f"This call writes exactly {deps.group_size} "
+        f"post{'s' if deps.group_size != 1 else ''} for one group of the breakdown "
+        f"plan: {deps.group_topic}",
     ]
+    if deps.written_so_far:
+        already = "\n".join(f"- {post}" for post in deps.written_so_far)
+        lines.append(
+            "Posts already written for other groups in this same plan (avoid repeating "
+            f"their phrasing or framing):\n{already}"
+        )
     return "\n".join(line for line in lines if line)
-
-
-def _chunk_posts_into_groups(posts: list[str], group_sizes: list[int]) -> list[list[str]]:
-    """Deterministically re-groups the write call's flat post list using the
-    plan's already-decided sizes — the actual mechanism that avoids ever
-    asking the model for nested output. Pure, no model involved.
-    """
-    groups: list[list[str]] = []
-    idx = 0
-    for size in group_sizes:
-        groups.append(posts[idx : idx + size])
-        idx += size
-    return groups
 
 
 class PhaseCallback(Protocol):
@@ -287,15 +296,16 @@ async def run_linkedin_to_bluesky_agent(
     deps: LinkedInToBlueskyDeps,
     on_phase: PhaseCallback | None = None,
 ) -> list[LinkedInToBlueskyGroup]:
-    """Plan the breakdown, write the posts, then deterministically re-group
-    them per the plan.
+    """Plan the breakdown, then write each group's posts with its own call,
+    sequentially, feeding each call what earlier groups already wrote (see
+    module docstring for why it's one write call per group).
 
     Args:
         deps: Brand identity, reused Bluesky settings, the source LinkedIn
             text, target count / thread preference, anti-repetition
             context, and cumulative feedback.
         on_phase: Optional callback invoked with a human-readable phase name
-            before each of the two calls — see
+            before the plan call and before each group's write call — see
             agent/agents/newsletter.py's identical parameter.
     """
     if on_phase:
@@ -304,30 +314,37 @@ async def run_linkedin_to_bluesky_agent(
     plan_result = await breakdown_plan_agent.run(
         deps.source_text, deps=deps, usage_limits=USAGE_LIMITS
     )
+    group_sizes = plan_result.output.group_sizes
+    group_topics = plan_result.output.group_topics
     # Only visible with AGENT_DEBUG=true (see agent/logging.py) — nothing
     # else captures the actual generated content on a *successful* call.
     logger.debug(
         "LinkedIn-to-Bluesky plan agent output",
-        extra={
-            "group_sizes": plan_result.output.group_sizes,
-            "group_topics": plan_result.output.group_topics,
-        },
+        extra={"group_sizes": group_sizes, "group_topics": group_topics},
     )
 
-    if on_phase:
-        on_phase("Writing posts")
-    write_deps = replace(
-        deps,
-        group_sizes=plan_result.output.group_sizes,
-        group_topics=plan_result.output.group_topics,
-    )
     logger.info("Running LinkedIn-to-Bluesky write agent", extra={"brand_id": deps.brand.id})
-    write_result = await write_posts_agent.run(
-        deps.source_text, deps=write_deps, usage_limits=USAGE_LIMITS
-    )
-    logger.debug(
-        "LinkedIn-to-Bluesky write agent output", extra={"posts": write_result.output.posts}
-    )
+    written_so_far: list[str] = []
+    groups: list[LinkedInToBlueskyGroup] = []
+    for i, (size, topic) in enumerate(zip(group_sizes, group_topics, strict=True)):
+        if on_phase:
+            phase = (
+                "Writing posts"
+                if len(group_sizes) == 1
+                else f"Writing posts ({i + 1}/{len(group_sizes)})"
+            )
+            on_phase(phase)
+        write_deps = replace(
+            deps, group_size=size, group_topic=topic, written_so_far=written_so_far
+        )
+        write_result = await write_posts_agent.run(
+            deps.source_text, deps=write_deps, usage_limits=USAGE_LIMITS
+        )
+        logger.debug(
+            "LinkedIn-to-Bluesky write agent output",
+            extra={"group_topic": topic, "posts": write_result.output.posts},
+        )
+        groups.append(LinkedInToBlueskyGroup(posts=write_result.output.posts))
+        written_so_far = [*written_so_far, *write_result.output.posts]
 
-    chunks = _chunk_posts_into_groups(write_result.output.posts, plan_result.output.group_sizes)
-    return [LinkedInToBlueskyGroup(posts=chunk) for chunk in chunks]
+    return groups
