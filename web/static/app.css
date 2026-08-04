@@ -302,6 +302,20 @@ h2 {
   color: var(--danger-fg);
 }
 
+/* Bold/Italic/Underline/Strikethrough buttons above the LinkedIn draft
+   textarea — see applyLinkedInStyle in base.html. */
+.format-toolbar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.btn-format {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
 .char-counter {
   font-size: 0.78rem;
   color: var(--text-dim);

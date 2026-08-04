@@ -5,6 +5,19 @@
     <input type="hidden" name="state" value="{{ state_json }}" />
     <div class="field">
       <label for="draft_text">Post text</label>
+      {# Highlight text in the textarea below, then click a button to apply
+         that Unicode style to the selection (LinkedIn has no real rich text —
+         see applyLinkedInStyle in base.html). Clicking again toggles it off. #}
+      <div class="format-toolbar">
+        <button type="button" class="btn btn-secondary btn-format"
+                onclick="applyLinkedInStyle('draft_text', 'bold')" title="Bold"><b>B</b></button>
+        <button type="button" class="btn btn-secondary btn-format"
+                onclick="applyLinkedInStyle('draft_text', 'italic')" title="Italic"><i>I</i></button>
+        <button type="button" class="btn btn-secondary btn-format"
+                onclick="applyLinkedInStyle('draft_text', 'underline')" title="Underline"><u>U</u></button>
+        <button type="button" class="btn btn-secondary btn-format"
+                onclick="applyLinkedInStyle('draft_text', 'strikethrough')" title="Strikethrough"><s>S</s></button>
+      </div>
       <textarea id="draft_text" name="draft_text" rows="14">{{ state.draft_text }}</textarea>
     </div>
 

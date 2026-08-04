@@ -35,6 +35,152 @@
         flash("Copy failed");
       }
     }
+
+    // Bold/Italic/Underline/Strikethrough toolbar for the LinkedIn draft
+    // textarea (see partials/linkedin_draft.html) — LinkedIn has no rich-text
+    // formatting, so "bold" etc. means swapping Latin letters/digits for
+    // their Unicode Mathematical Alphanumeric Symbol look-alikes, the same
+    // substitution style the LinkedIn agents already generate (see
+    // agent/agents/linkedin.py's _NO_MARKDOWN_REMINDER) — so text you style
+    // here and text the model generates look identical, and the polish step
+    // (which now leaves already-correct Unicode styling alone) treats both
+    // the same way.
+    //
+    // Defined here in base.html, not inside the partial, because the draft
+    // step is only ever loaded into the page later via an htmx swap — a
+    // <script> tag embedded in swapped-in innerHTML isn't guaranteed to run,
+    // so these functions need to already exist on the page before that
+    // swap happens.
+    (function () {
+      const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const LOWER = "abcdefghijklmnopqrstuvwxyz";
+      const DIGITS = "0123456789";
+      const ALNUM = /[A-Za-z0-9]/;
+      const UNDERLINE_MARK = "̲"; // COMBINING LOW LINE
+      const STRIKETHROUGH_MARK = "̶"; // COMBINING LONG STROKE OVERLAY
+
+      // Base code points for the Mathematical Sans-Serif alphanumeric
+      // blocks — chosen to match the "𝗕𝗼𝗹𝗱 𝗧𝗲𝘅𝘁" example already used
+      // throughout the LinkedIn agent prompts. Unlike the serif Mathematical
+      // Italic block, these sans-serif blocks have no missing/reassigned
+      // code points (e.g. no "italic h" quirk), so every letter maps with a
+      // plain linear offset. There is no italic or bold-italic variant for
+      // digits in Unicode at all — only bold digits exist — handled in
+      // styledChar() below by falling back through what's actually there.
+      function buildLetterMap(upperStart, lowerStart) {
+        const map = {};
+        for (let i = 0; i < 26; i++) {
+          map[UPPER[i]] = String.fromCodePoint(upperStart + i);
+          map[LOWER[i]] = String.fromCodePoint(lowerStart + i);
+        }
+        return map;
+      }
+      const BOLD_MAP = buildLetterMap(0x1d5d4, 0x1d5ee);
+      for (let i = 0; i < 10; i++) BOLD_MAP[DIGITS[i]] = String.fromCodePoint(0x1d7ec + i);
+      const ITALIC_MAP = buildLetterMap(0x1d608, 0x1d622);
+      const BOLD_ITALIC_MAP = buildLetterMap(0x1d63c, 0x1d656);
+
+      // Reverse lookup — any styled character maps back to its plain base
+      // plus which of bold/italic produced it, so re-styling already-styled
+      // text (or detecting "is this whole selection already bold?") works
+      // without a separate parallel table to keep in sync.
+      const REVERSE_MAP = {};
+      function registerReverse(map, bold, italic) {
+        for (const base in map) REVERSE_MAP[map[base]] = { base, bold, italic };
+      }
+      registerReverse(BOLD_MAP, true, false);
+      registerReverse(ITALIC_MAP, false, true);
+      registerReverse(BOLD_ITALIC_MAP, true, true);
+
+      function styleOf(ch) {
+        return REVERSE_MAP[ch] || { base: ch, bold: false, italic: false };
+      }
+
+      function styledChar(base, bold, italic) {
+        if (!ALNUM.test(base)) return base; // spaces/punctuation/etc. pass through
+        const isDigit = DIGITS.includes(base);
+        if (bold && italic && !isDigit) return BOLD_ITALIC_MAP[base] || base;
+        if (bold) return BOLD_MAP[base] || base; // also covers bold+italic on a digit
+        if (italic) return ITALIC_MAP[base] || base; // no italic digit exists — base unchanged
+        return base;
+      }
+
+      // Splits text into one entry per base character plus whatever
+      // underline/strikethrough combining marks trail it — using
+      // Array.from (not indexing/charCodeAt) because every styled letter
+      // above is outside the Basic Multilingual Plane and would otherwise
+      // be split across a UTF-16 surrogate pair.
+      function toGraphemes(text) {
+        const graphemes = [];
+        for (const cp of Array.from(text)) {
+          if ((cp === UNDERLINE_MARK || cp === STRIKETHROUGH_MARK) && graphemes.length > 0) {
+            graphemes[graphemes.length - 1].marks.push(cp);
+          } else {
+            graphemes.push({ base: cp, marks: [] });
+          }
+        }
+        return graphemes;
+      }
+
+      function graphemesToString(graphemes) {
+        return graphemes.map((g) => g.base + g.marks.join("")).join("");
+      }
+
+      // Word-processor-style toggle: if every transformable character in
+      // the selection already has this style, turn it off everywhere;
+      // otherwise turn it on everywhere. Bold and italic are tracked
+      // independently per character so they compose (bold text you then
+      // italicize becomes bold-italic, not plain italic).
+      function toggleLetterStyle(text, styleName) {
+        const graphemes = toGraphemes(text);
+        const transformable = graphemes.filter((g) => ALNUM.test(styleOf(g.base).base));
+        if (transformable.length === 0) return text;
+        const turnOn = !transformable.every((g) => styleOf(g.base)[styleName]);
+        for (const g of graphemes) {
+          const info = styleOf(g.base);
+          if (!ALNUM.test(info.base)) continue;
+          const bold = styleName === "bold" ? turnOn : info.bold;
+          const italic = styleName === "italic" ? turnOn : info.italic;
+          g.base = styledChar(info.base, bold, italic);
+        }
+        return graphemesToString(graphemes);
+      }
+
+      // Same toggle rule as above, but for a combining mark applied to
+      // every character in the selection (including spaces/punctuation —
+      // skipping them would leave visible gaps in the underline/strike).
+      // Independent of, and stacks on top of, whatever bold/italic styling
+      // is already present, since combining marks attach after any base
+      // character regardless of which Unicode block it came from.
+      function toggleMark(text, mark) {
+        const graphemes = toGraphemes(text);
+        if (graphemes.length === 0) return text;
+        const turnOn = !graphemes.every((g) => g.marks.includes(mark));
+        for (const g of graphemes) {
+          const has = g.marks.includes(mark);
+          if (turnOn && !has) g.marks.push(mark);
+          if (!turnOn && has) g.marks = g.marks.filter((m) => m !== mark);
+        }
+        return graphemesToString(graphemes);
+      }
+
+      window.applyLinkedInStyle = function (textareaId, styleName) {
+        const ta = document.getElementById(textareaId);
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start === end) return; // nothing selected — nothing to style
+        const selected = ta.value.slice(start, end);
+        const transformed =
+          styleName === "underline"
+            ? toggleMark(selected, UNDERLINE_MARK)
+            : styleName === "strikethrough"
+              ? toggleMark(selected, STRIKETHROUGH_MARK)
+              : toggleLetterStyle(selected, styleName);
+        ta.value = ta.value.slice(0, start) + transformed + ta.value.slice(end);
+        ta.focus();
+        ta.setSelectionRange(start, start + transformed.length);
+      };
+    })();
   </script>
 </head>
 <body>
