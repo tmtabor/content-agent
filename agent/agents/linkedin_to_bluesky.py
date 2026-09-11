@@ -276,21 +276,32 @@ The context below gives you this group's key_points — the specific facts/claim
 the LinkedIn post that belong to this group. Cover ONLY those points. The full LinkedIn
 post is also given, but purely as background for tone and factual accuracy — it is NOT
 extra material to draw from, and other groups are separately covering the rest of it.
-In particular, don't restate the post's opening framing or hook just because it's the
-first thing in the source text — write only what this group's key_points cover. The
-context also lists the OTHER groups' topics; treat those as off-limits here, even
-briefly or in different words, since another call is already covering them.
+In particular, don't retell the post's specific opening anecdote or hook just because
+it's the first thing in the source text — write only what this group's key_points
+cover. The context also lists the OTHER groups' topics; treat those as off-limits here,
+even briefly or in different words, since another call is already covering them.
+
+Every group — whether it's a single post or a thread — must be fully understandable by
+someone who never sees any other group's posts. Bluesky can show these in any order, to
+different readers, at different times, so nothing here may assume a name, pronoun, or
+piece of context that only gets introduced in a different group. If this group's
+key_points refer to "it," "the agent," or similar without saying what that is, ground it
+yourself using the brand background or the full LinkedIn post given below — don't invent
+new claims to do it. Keep this grounding as cheap as possible: one or two words that
+give the pronoun an antecedent (e.g. "my job-hunting agent" or "the agent I built") is
+enough, not a restated backstory. That's not the same as retelling another group's
+specific anecdote, and it's required even if it means a short phrase overlaps with
+another group's wording. For a thread, only the first post needs to establish this
+grounding; later posts in the same thread may build on it, continuing only the post
+before it within this same group.
 
 The group's post count is given in the context below — return exactly that many posts,
 in order, and nothing else.
 
-If the group has only one post, it must be fully self-contained — understandable on its
-own, with no reference to "the previous post" or anything outside itself. If the group
-has more than one post, it's a thread: each post continues only the post before it
-within this same group.
-
-Every post must be 300 characters or fewer, including any hashtags. Write in the
-brand's voice, for its audience.""",
+Every post must be 300 characters or fewer, including any hashtags — this is a hard
+limit, and it takes priority over the grounding above: if you're close to it, cut a
+parenthetical, an example, or a redundant word before you'd either exceed 300 characters
+or drop the grounding entirely. Write in the brand's voice, for its audience.""",
 )
 
 
