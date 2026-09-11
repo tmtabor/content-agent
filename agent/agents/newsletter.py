@@ -125,6 +125,20 @@ needed. If an HTML template is given in the context below, follow its exact stru
 and styling instead of inventing your own layout. Write in the brand's voice, for its
 audience. Do not repeat topics or angles from the brand's recent newsletters listed in
 the context below.
+
+Ground every section strictly in the material given in the user's prompt below — do not
+invent product features, offers, statistics, or roadmap items that aren't mentioned
+there. The prompt is raw source material, not finished copy: rewrite it in the brand's
+voice and fit it into the required structure, selecting or combining items if there are
+more than the structure needs, but never pad a section with a topic the prompt didn't
+give you. If the prompt contains something that doesn't fit any required subsection
+(e.g. a limited-time promo or sale), don't drop it — add a brief standalone block for it
+without displacing or reordering the required subsections and their mandated elements
+(e.g. a call-to-action link the brand's instructions say must close out a specific
+subsection stays there, even when you add extra blocks elsewhere).
+
+This is raw HTML, not Markdown — never use Markdown syntax like **bold** or *italic*;
+use real HTML tags (<strong>/<b>, <em>/<i>) for emphasis instead.
 """,
 )
 
