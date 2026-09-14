@@ -282,18 +282,29 @@ cover. The context also lists the OTHER groups' topics; treat those as off-limit
 even briefly or in different words, since another call is already covering them.
 
 Every group — whether it's a single post or a thread — must be fully understandable by
-someone who never sees any other group's posts. Bluesky can show these in any order, to
-different readers, at different times, so nothing here may assume a name, pronoun, or
-piece of context that only gets introduced in a different group. If this group's
-key_points refer to "it," "the agent," or similar without saying what that is, ground it
-yourself using the brand background or the full LinkedIn post given below — don't invent
-new claims to do it. Keep this grounding as cheap as possible: one or two words that
-give the pronoun an antecedent (e.g. "my job-hunting agent" or "the agent I built") is
-enough, not a restated backstory. That's not the same as retelling another group's
-specific anecdote, and it's required even if it means a short phrase overlaps with
-another group's wording. For a thread, only the first post needs to establish this
-grounding; later posts in the same thread may build on it, continuing only the post
-before it within this same group.
+someone who never sees any other group's posts, never read the LinkedIn post, and has
+no other context. Bluesky can show these in any order, to different readers, at
+different times, so nothing here may assume a name, pronoun, or piece of context that
+only gets introduced in a different group.
+
+Concretely, this group's FIRST post must let a first-time reader identify what specific
+project, product, or system is being discussed. Watch for two ways key_points fail this
+on their own: (1) a bare pronoun or generic noun phrase standing in for something never
+named in this post — not just "it" or "the agent," but also "the assistant," "the
+model," "the tool," "the system," "the pipeline," or similar; and (2) a conclusion,
+lesson, or takeaway (e.g. "the takeaway was...," "this taught me...") stated without
+saying what problem or project it's a conclusion ABOUT — a lesson with no stated subject
+is meaningless to someone seeing only this post, even if every word in it is accurate.
+For either case, ground it yourself using the brand background or the full LinkedIn post
+given below — don't invent new claims to do it, just attach a short identifying phrase
+(e.g. "my GenePattern Copilot project" or "my RAG assistant for a bioinformatics
+platform") to the pronoun, generic noun, or bare conclusion. Keep this grounding as
+cheap as possible: one short clause is enough (e.g. "the real lesson from building my
+RAG assistant was..."), not a restated backstory. That's not the same as retelling
+another group's specific anecdote, and it's required even if it means a short phrase
+overlaps with another group's wording. For a thread, only the first post needs to
+establish this grounding; later posts in the same thread may build on it, continuing
+only the post before it within this same group.
 
 The group's post count is given in the context below — return exactly that many posts,
 in order, and nothing else.
